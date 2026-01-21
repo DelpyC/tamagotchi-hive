@@ -1,0 +1,18 @@
+Cahier Des Charges 
+
+Communication par JSON entre backend et Frontend. Doit définir le modèle du JSON (peut seulement être changé si toutes 
+les personnes concernées sont prévenus)
+
+Charles ʘ‿ʘ (Backend): Création du lien localhost pour permettre d'accéder au site grâce à golang. Création de la grille
+coté golang qui va être mis dans le html grâce à un JSON. 
+
+Dylan (Frontend) : Affichage de la grille visuelle sur le site pris du JSON pour qu'il affiche la bonne map. Affichage 
+des personnages présents. Montrer les événements qui se passent avec un message et afficher des statistiques pour 
+chaque civilization (nbre de morts / de vivants, personne la plus veille, personne qui a le plus voyagé / qui a le plus
+tué...). Mettre en place des animations en utilisant du js \(⌐■_■)/ et faire en sorte que le jeu fonctionne et montre bien
+plusieurs affichages pour que les pixels bougent. SI POSSIBLE, faire en sorte que l'utilisateur puisse interagir avec
+des choses sur la map et peut-être qu'ils puissent regarder/changer les stats de certains individus. Mettre en place un
+Menu avant de rentrer dans le jeu pour que le jeu ne commence pas instantanément et pour pouvoir mettre en place des
+paramètres ET BUT FINAL, faire des thèmes personalisés (Seigneur des Anneaux, Elden Ring, etc...).
+
+Adem (Logique du jeu + "IA": 

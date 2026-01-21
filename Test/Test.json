@@ -1,0 +1,14 @@
+{
+  "width": 20,
+  "height": 10,
+  "cells": [
+    {"x":0,"y":0,"terrain":"plains"},
+    {"x":1,"y":0,"terrain":"forest"},
+    {"x":2,"y":0,"terrain":"ocean"}
+  ],
+  "entities":[
+    {"type":"tribe","x":2,"y":1,"name":"Hobbits","population":5,"color":"green"},
+    {"type":"tribe","x":5,"y":3,"name":"Orcs","population":8,"color":"red"}
+  ],
+  "events":["Hobbits discovered a new land"]
+}
