@@ -1,1 +1,1 @@
-package game
+package main
