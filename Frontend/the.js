@@ -1,54 +1,78 @@
-<!-- JS logic -->
-
-// Sample mock data
-const world = {
-    width: 50,
-    height: 50,
-    cells: Array.from({length: 200}, (_, i) => ({
-        terrain: i % 3 === 0 ? "plains" : (i % 3 === 1 ? "forest" : "ocean")
-    })),
-    entities: [
-        {type: "tribe", x: 2, y: 1, name: "Hobbits", color: "green"},
-        {type: "tribe", x: 5, y: 3, name: "Orcs", color: "red"}
-    ],
-    events: ["Les Humains ont découverts une nouvelle terre"]
-};
-
 const map = document.getElementById("map");
 const eventsDiv = document.getElementById("events");
+let worldData = null;
 
+// Render everything from JSON
 function renderWorld(world) {
     map.innerHTML = "";
+
+    map.style.display = "grid";
+    map.style.gridTemplateColumns = `repeat(${world.width}, 30px)`;
+    map.style.gridTemplateRows = `repeat(${world.height}, 30px)`;
+    map.style.gap = "2px";
+
+    // Render terrain
     for (let y = 0; y < world.height; y++) {
         for (let x = 0; x < world.width; x++) {
+            const index = y * world.width + x;
             const cellDiv = document.createElement("div");
-            const cell = world.cells[y * world.width + x];
-            cellDiv.className = "cell " + cell.terrain;
+            cellDiv.classList.add("cell");
+
+            // Safe check: if terrain exists, use it; else default
+            if (world.cells[index] && world.cells[index].terrain) {
+                cellDiv.classList.add(world.cells[index].terrain);
+            } else {
+                cellDiv.classList.add("plains");
+            }
+
             map.appendChild(cellDiv);
         }
     }
 
     // Render entities
-    world.entities.forEach(e => {
-        const index = e.y * world.width + e.x;
-        const cell = map.children[index];
-        const icon = document.createElement("span");
-        icon.textContent = "🛖"; // small hut for tribe
-        icon.style.color = e.color;
-        cell.appendChild(icon);
-    });
+    if (world.entities) {
+        world.entities.forEach(e => {
+            const index = e.y * world.width + e.x;
+            const cell = map.children[index];
+
+            const icon = document.createElement("span");
+            icon.textContent = "⬤";
+            icon.style.color = e.color;
+            icon.style.fontSize = "20px";
+            cell.appendChild(icon);
+        });
+    }
 
     // Render events
-    eventsDiv.innerHTML = "";
-    world.events.slice(-5).forEach(ev => {
-        const p = document.createElement("p");
-        p.textContent = ev;
-        eventsDiv.appendChild(p);
-    });
+    if (world.events) {
+        eventsDiv.innerHTML = "";
+        world.events.slice(-5).forEach(ev => {
+            const p = document.createElement("p");
+            p.textContent = ev;
+            eventsDiv.appendChild(p);
+        });
+    }
 }
 
-// Initial render
-renderWorld(world);
+function updateWorld() {
+    
+}
 
 
+function live() {
+    if (!worldData) return;
 
+    updateWorld(worldData),
+    renderWorld(worldData)
+}
+
+// Fetch JSON from mock folder
+fetch("Test/Test.json")
+    .then(res => res.json())
+    .then(data => {
+        console.log("World loaded:", data);
+        renderWorld(data);
+    })
+    .catch(err => console.error("Failed to load world:", err));
+
+   
