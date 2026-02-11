@@ -12,9 +12,15 @@ func main() {
 
 	http.HandleFunc("/api/map", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(myWorld.Grid)
+		err := json.NewEncoder(w).Encode(myWorld.Grid)
+		if err != nil {
+			return
+		}
 	})
 
 	fmt.Println("Serveur lancé sur http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		return
+	}
 }
