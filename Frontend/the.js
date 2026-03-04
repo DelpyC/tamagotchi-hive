@@ -74,5 +74,4 @@ fetch("Test/Test.json")
         renderWorld(data);
     })
     .catch(err => console.error("Failed to load world:", err));
-
    

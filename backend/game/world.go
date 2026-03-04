@@ -11,17 +11,18 @@ import (
 )
 
 type Hex struct {
-	Q, R     int    // Coordonnées axiales
-	Terrain  string // "grassland", "ocean"
-	Country  string // "Cahokia", "Washington", etc.
-	EntityID int    // -1 si vide, sinon ID du Tamagotchi
+	Q        int    `json:"q"` // Coordonnées axiales
+	R        int    `json:"r"`
+	Terrain  string `json:"Terrain"`  // "grassland", "ocean"
+	Country  string `json:"Country"`  // "Cahokia", "Washington", etc.
+	EntityID int    `json:"EntityID"` // -1 si vide, sinon ID du Tamagotchi
 }
 
 type World struct {
-	Width  int
-	Height int
+	Width  int `json:"width"`
+	Height int `json:"height"`
 
-	Grid map[string]*Hex
+	Grid map[string]*Hex `json:"grid"`
 	mu   sync.RWMutex
 	rng  *rand.Rand
 }
