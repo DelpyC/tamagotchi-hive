@@ -2,7 +2,12 @@ package game
 
 import (
 	"fmt"
+	"image"
+	"image/color"
+	"math/rand"
+	"os"
 	"sync"
+	"time"
 )
 
 type Hex struct {
@@ -18,25 +23,29 @@ type World struct {
 
 	Grid map[string]*Hex
 	mu   sync.RWMutex
+	rng  *rand.Rand
 }
 
 func NewWorld(w, h int) *World {
+	source := rand.NewSource(time.Now().UnixNano())
+	rng := rand.New(source)
+
 	world := &World{
 		Width:  w,
 		Height: h,
 		Grid:   make(map[string]*Hex),
+		rng:    rng,
 	}
 
 	// Initialisation de la grille avec des cases vides
 	for q := 0; q < w; q++ {
 		for r := 0; r < h; r++ {
-			hex := &Hex{
+			world.Grid[serializePos(q, r)] = &Hex{
 				Q:        q,
 				R:        r,
-				Terrain:  "ocean", // Par défaut
+				Terrain:  "ocean", // Par défaut, tout est océan
 				EntityID: -1,
 			}
-			world.Grid[serializePos(q, r)] = hex
 		}
 	}
 	return world
@@ -62,4 +71,102 @@ func (w *World) IsFree(q, r int) bool {
 }
 func serializePos(q, r int) string {
 	return fmt.Sprintf("%d,%d", q, r)
+}
+
+func (w *World) GenerateContinent() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	centerQ := w.Width / 2
+	centerR := w.Height / 2
+
+	maxDistance := float64(w.Width) / 2
+
+	for _, hex := range w.Grid {
+
+		dq := float64(hex.Q - centerQ)
+		dr := float64(hex.R - centerR)
+		distance := (dq*dq + dr*dr)
+
+		randomFactor := w.rng.Float64() * maxDistance // Ajoute de la variabilité
+
+		if distance+randomFactor < maxDistance*maxDistance {
+			hex.Terrain = "plains"
+
+			if w.rng.Float64() < 0.15 {
+				hex.Terrain = "forest"
+			}
+		}
+	}
+}
+
+func (w *World) ApplyImageMap(path string) error {
+
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return err
+	}
+
+	bounds := img.Bounds()
+	imgW := bounds.Dx()
+	imgH := bounds.Dy()
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	for q := 0; q < w.Width; q++ {
+		for r := 0; r < w.Height; r++ {
+
+			// Scale world coords to image coords
+			x := q * (imgW - 1) / (w.Width - 1)
+			y := r * (imgH - 1) / (w.Height - 1)
+
+			pixel := img.At(x, y)
+			gray := color.GrayModel.Convert(pixel).(color.Gray)
+
+			hex := w.Grid[serializePos(q, r)]
+
+			fmt.Println("Gray:", gray.Y)
+
+			if gray.Y < 128 {
+				hex.Terrain = "plains"
+			} else {
+				hex.Terrain = "ocean"
+			}
+		}
+	}
+
+	return nil
+}
+
+func (w *World) PrintTerrainASCII() {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	for r := 0; r < w.Height; r++ {
+		line := make([]rune, w.Width)
+		for q := 0; q < w.Width; q++ {
+			hex, ok := w.Grid[serializePos(q, r)]
+			if !ok {
+				line[q] = '?'
+				continue
+			}
+
+			switch hex.Terrain {
+			case "ocean":
+				line[q] = '~'
+			case "forest":
+				line[q] = 'T'
+			default:
+				line[q] = '#'
+			}
+		}
+		fmt.Println(string(line))
+	}
 }

@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	_ "image/jpeg"
+	_ "image/png"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -10,7 +12,17 @@ import (
 )
 
 func main() {
-	myWorld := game.NewWorld(20, 10)
+	world := game.NewWorld(200, 100)
+	fmt.Println("World size:", world.Width, world.Height)
+	if err := world.ApplyImageMap("../Frontend/things/earth.jpg"); err != nil {
+		log.Fatal("failed to apply image map:", err)
+	}
+
+	startServer(world)
+}
+
+func startServer(myWorld *game.World) {
+
 	frontendDir := filepath.Join("..", "Frontend")
 	frontendFS := http.FileServer(http.Dir(frontendDir))
 
@@ -24,7 +36,7 @@ func main() {
 
 	http.HandleFunc("/api/map", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(myWorld.Grid)
+		err := json.NewEncoder(w).Encode(myWorld.ToDTO())
 		if err != nil {
 			http.Error(w, "failed to encode map", http.StatusInternalServerError)
 		}
