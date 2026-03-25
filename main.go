@@ -104,14 +104,15 @@ type BattleResult struct {
 }
 
 type GameState struct {
-	Units  []*Unit       `json:"units"`
-	Drops  []*MassDrop   `json:"drops"`
-	Walls  []Wall        `json:"walls"`
-	TeamA  TeamState     `json:"teamA"`
-	TeamB  TeamState     `json:"teamB"`
-	Tick   int           `json:"tick"`
-	Phase  string        `json:"phase"` // "battle" | "result"
-	Result *BattleResult `json:"result,omitempty"`
+	Units      []*Unit       `json:"units"`
+	Drops      []*MassDrop   `json:"drops"`
+	Walls      []Wall        `json:"walls"`
+	TeamA      TeamState     `json:"teamA"`
+	TeamB      TeamState     `json:"teamB"`
+	Tick       int           `json:"-"`          // internal only, not sent to browser
+	ElapsedSec float64       `json:"elapsedSec"` // seconds since battle started
+	Phase      string        `json:"phase"`
+	Result     *BattleResult `json:"result,omitempty"`
 }
 
 // ── Globals ──────────────────────────────────────────────────────────────────
@@ -368,7 +369,8 @@ func tick() {
 		return
 	}
 	state.Tick++
-	dt := 1.0 / tickRate // seconds per tick
+	dt := 1.0 / tickRate
+	state.ElapsedSec = float64(state.Tick-battleStart) * dt
 
 	// ── Move units ──
 	for _, u := range state.Units {
