@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Battle Simulation</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="the.js" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
+ 
+</head>
+<body>
+
+<header>
+  <h1>BATTLE SIMULATION</h1>
+  <div><span id="connDot"></span><span id="connLabel">connecting…</span></div>
+</header>
+
+<div class="hud">
+  <!-- Team A -->
+  <div class="team-panel red">
+    <div class="team-name">TEAM ALPHA</div>
+    <div class="team-stats">
+      <div>ALIVE<br><span class="stat-val" id="aliveA">—</span></div>
+      <div>KILLS<br><span class="stat-val" id="killsA">—</span></div>
+      <div>MORALE<br><span class="stat-val" id="moraleA">—</span></div>
+    </div>
+    <div class="morale-bar red"><div class="morale-fill" id="moraleBarA" style="width:100%"></div></div>
+  </div>
+
+  <!-- Center -->
+  <div class="center-hud">
+    <div class="tick-label">TICK</div>
+    <div class="tick-display" id="tickDisp">0</div>
+    <div class="tick-label" id="phaseLabel">BATTLE</div>
+  </div>
+
+  <!-- Team B -->
+  <div class="team-panel blue">
+    <div class="team-name">TEAM BRAVO</div>
+    <div class="team-stats">
+      <div>ALIVE<br><span class="stat-val" id="aliveB">—</span></div>
+      <div>KILLS<br><span class="stat-val" id="killsB">—</span></div>
+      <div>MORALE<br><span class="stat-val" id="moraleB">—</span></div>
+    </div>
+    <div class="morale-bar blue"><div class="morale-fill" id="moraleBarB" style="width:100%"></div></div>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div class="legend">
+  <div class="legend-item" style="color:#E24B4A"><div class="legend-dot"></div> Alpha</div>
+  <div class="legend-item" style="color:#378ADD"><div class="legend-dot"></div> Bravo</div>
+  <div class="legend-item" style="color:#8a9ab8">S = Scout &nbsp; M = Soldier &nbsp; T = Tank &nbsp; H = Healer</div>
+</div>
+
+<!-- Result overlay -->
+<div id="resultOverlay">
+  <div class="result-card">
+    <h2 id="resultTitle" class="red">VICTORY</h2>
+    <div class="result-sub" id="resultSub">TEAM ALPHA WINS</div>
+    <div class="result-stats">
+      <div>Alpha kills: <span id="rKillsA">—</span></div>
+      <div>Bravo kills: <span id="rKillsB">—</span></div>
+      <div>Alpha morale: <span id="rMoraleA">—</span></div>
+      <div>Bravo morale: <span id="rMoraleB">—</span></div>
+      <div>Duration: <span id="rDuration">—</span> ticks</div>
+    </div>
+    <div class="mvp-row">
+      <div style="font-size:10px;letter-spacing:0.15em;margin-bottom:4px;">MVP UNIT</div>
+      <div class="mvp-name" id="rMVP">—</div>
+      <div style="font-size:11px;margin-top:4px;"><span id="rMVPKills">—</span> kills</div>
+    </div>
+    <button class="restart-btn" id="restartBtn">RESTART BATTLE</button>
+  </div>
+</div>
+</body>
+</html>

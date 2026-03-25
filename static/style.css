@@ -1,0 +1,305 @@
+ *,
+ *::before,
+ *::after {
+     margin: 0;
+     padding: 0;
+     box-sizing: border-box;
+ }
+
+ :root {
+     --red: #E24B4A;
+     --red-l: #f09595;
+     --blue: #378ADD;
+     --blue-l: #85B7EB;
+     --bg: #0a0b0e;
+     --panel: #10131a;
+     --border: #1e2430;
+     --text: #8a9ab8;
+     --bright: #c8d4ec;
+     --mono: 'Share Tech Mono', monospace;
+     --display: 'Bebas Neue', sans-serif;
+ }
+
+ body {
+     background: var(--bg);
+     color: var(--bright);
+     font-family: var(--mono);
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     min-height: 100vh;
+     padding: 16px;
+     gap: 12px;
+ }
+
+ /* ── Header ── */
+ header {
+     width: 100%;
+     max-width: 1200px;
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     border-bottom: 1px solid var(--border);
+     padding-bottom: 8px;
+ }
+
+ header h1 {
+     font-family: var(--display);
+     font-size: 28px;
+     letter-spacing: 0.12em;
+     color: var(--bright);
+ }
+
+ #connDot {
+     width: 8px;
+     height: 8px;
+     border-radius: 50%;
+     background: #333;
+     display: inline-block;
+     margin-right: 8px;
+     vertical-align: middle;
+     transition: background 0.3s;
+ }
+
+ #connDot.on {
+     background: #1D9E75;
+ }
+
+ #connLabel {
+     font-size: 11px;
+     color: var(--text);
+ }
+
+ /* ── HUD row ── */
+ .hud {
+     width: 100%;
+     max-width: 1200px;
+     display: grid;
+     grid-template-columns: 1fr auto 1fr;
+     gap: 12px;
+     align-items: center;
+ }
+
+ .team-panel {
+     background: var(--panel);
+     border: 1px solid var(--border);
+     border-radius: 6px;
+     padding: 10px 16px;
+     display: flex;
+     flex-direction: column;
+     gap: 6px;
+ }
+
+ .team-panel.red {
+     border-left: 3px solid var(--red);
+ }
+
+ .team-panel.blue {
+     border-right: 3px solid var(--blue);
+ }
+
+ .team-panel.blue {
+     text-align: right;
+ }
+
+ .team-name {
+     font-family: var(--display);
+     font-size: 20px;
+     letter-spacing: 0.1em;
+ }
+
+ .team-panel.red .team-name {
+     color: var(--red);
+ }
+
+ .team-panel.blue .team-name {
+     color: var(--blue);
+ }
+
+ .team-stats {
+     display: flex;
+     gap: 16px;
+     font-size: 11px;
+     color: var(--text);
+ }
+
+ .team-panel.blue .team-stats {
+     justify-content: flex-end;
+ }
+
+ .stat-val {
+     color: var(--bright);
+     font-size: 13px;
+ }
+
+ .morale-bar {
+     height: 4px;
+     background: var(--border);
+     border-radius: 2px;
+     overflow: hidden;
+ }
+
+ .morale-fill {
+     height: 100%;
+     border-radius: 2px;
+     transition: width 0.3s;
+ }
+
+ .red .morale-fill {
+     background: var(--red);
+ }
+
+ .blue .morale-fill {
+     background: var(--blue);
+ }
+
+ .center-hud {
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     gap: 4px;
+ }
+
+ .tick-display {
+     font-family: var(--display);
+     font-size: 32px;
+     letter-spacing: 0.08em;
+     color: var(--bright);
+ }
+
+ .tick-label {
+     font-size: 10px;
+     color: var(--text);
+     letter-spacing: 0.15em;
+ }
+
+ /* ── Canvas ── */
+ canvas {
+     border: 1px solid var(--border);
+     border-radius: 6px;
+     display: block;
+     max-width: 100%;
+ }
+
+ /* ── Legend ── */
+ .legend {
+     display: flex;
+     gap: 20px;
+     font-size: 11px;
+     color: var(--text);
+     flex-wrap: wrap;
+     justify-content: center;
+ }
+
+ .legend-item {
+     display: flex;
+     align-items: center;
+     gap: 6px;
+ }
+
+ .legend-dot {
+     width: 10px;
+     height: 10px;
+     border-radius: 50%;
+     border: 1.5px solid currentColor;
+ }
+
+ /* ── Result overlay ── */
+ #resultOverlay {
+     display: none;
+     position: fixed;
+     inset: 0;
+     background: rgba(0, 0, 0, 0.8);
+     align-items: center;
+     justify-content: center;
+     z-index: 100;
+ }
+
+ #resultOverlay.show {
+     display: flex;
+ }
+
+ .result-card {
+     background: var(--panel);
+     border: 1px solid var(--border);
+     border-radius: 10px;
+     padding: 40px 56px;
+     text-align: center;
+     max-width: 480px;
+     width: 90%;
+ }
+
+ .result-card h2 {
+     font-family: var(--display);
+     font-size: 48px;
+     letter-spacing: 0.12em;
+     margin-bottom: 4px;
+ }
+
+ .result-card h2.red {
+     color: var(--red);
+ }
+
+ .result-card h2.blue {
+     color: var(--blue);
+ }
+
+ .result-card h2.draw {
+     color: var(--text);
+ }
+
+ .result-sub {
+     font-size: 11px;
+     color: var(--text);
+     letter-spacing: 0.15em;
+     margin-bottom: 28px;
+ }
+
+ .result-stats {
+     display: grid;
+     grid-template-columns: 1fr 1fr;
+     gap: 8px 24px;
+     font-size: 12px;
+     color: var(--text);
+     margin-bottom: 28px;
+     text-align: left;
+ }
+
+ .result-stats span {
+     color: var(--bright);
+ }
+
+ .mvp-row {
+     background: #161b25;
+     border: 1px solid var(--border);
+     border-radius: 6px;
+     padding: 10px 16px;
+     font-size: 12px;
+     color: var(--text);
+     margin-bottom: 24px;
+ }
+
+ .mvp-row .mvp-name {
+     font-size: 16px;
+     color: var(--bright);
+     font-family: var(--display);
+     letter-spacing: 0.1em;
+ }
+
+ .restart-btn {
+     background: transparent;
+     border: 1px solid var(--border);
+     color: var(--bright);
+     font-family: var(--mono);
+     font-size: 13px;
+     letter-spacing: 0.12em;
+     padding: 10px 32px;
+     border-radius: 4px;
+     cursor: pointer;
+     transition: border-color 0.2s, color 0.2s;
+ }
+
+ .restart-btn:hover {
+     border-color: var(--bright);
+     color: #fff;
+ }
