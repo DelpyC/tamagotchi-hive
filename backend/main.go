@@ -14,14 +14,15 @@ import (
 func main() {
 	world := game.NewWorld(200, 100)
 	fmt.Println("World size:", world.Width, world.Height)
+
 	if err := world.ApplyImageMap("../Frontend/things/earth.jpg"); err != nil {
 		log.Fatal("failed to apply image map:", err)
 	}
 
-	startServer(world)
+	startServer(world) // ✅ pass the actual world variable
 }
 
-func startServer(myWorld *game.World) {
+func startServer(myWorld *game.World) { // ✅ correct type
 
 	frontendDir := filepath.Join("..", "Frontend")
 	frontendFS := http.FileServer(http.Dir(frontendDir))
@@ -36,7 +37,13 @@ func startServer(myWorld *game.World) {
 
 	http.HandleFunc("/api/map", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
+		// If you have ToDTO()
 		err := json.NewEncoder(w).Encode(myWorld.ToDTO())
+
+		// If you DO NOT have ToDTO(), temporarily use:
+		// err := json.NewEncoder(w).Encode(myWorld)
+
 		if err != nil {
 			http.Error(w, "failed to encode map", http.StatusInternalServerError)
 		}
