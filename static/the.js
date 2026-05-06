@@ -1,241 +1,395 @@
+// ── Config ────────────────────────────────────────────────────────────────────
+const MAP_W = 60, MAP_H = 40;
+let TILE = 16; // px per tile, recalculated on resize
+
+// Terrain colours
+const TERRAIN_COLOR = {
+  ocean:     '#1a3a5c',
+  coast:     '#2a5a8a',
+  grassland: '#3a7a3a',
+  plains:    '#8a9a4a',
+  desert:    '#c8a85a',
+  forest:    '#1e5a2a',
+  hills:     '#7a6a4a',
+  mountain:  '#6a6a72',
+  tundra:    '#8a9aaa',
+};
+
+// Resource icons (emoji rendered on canvas — small so no copyright concern)
+const RES_ICON = {
+  wheat:'🌾', cattle:'🐄', fish:'🐟',
+  iron:'⚙', horses:'🐴', coal:'◼',
+  gold:'★', silk:'◆', marble:'⬡',
+};
+
 // ── Canvas setup ──────────────────────────────────────────────────────────────
-const canvas = document.getElementById('canvas');
+const canvas = document.getElementById('map');
 const ctx    = canvas.getContext('2d');
-const WORLD_W = 1400, WORLD_H = 900;
- 
+const wrap   = document.getElementById('mapWrap');
+
 function resize() {
-  const maxW = Math.min(window.innerWidth - 32, 1200);
-  const scale = maxW / WORLD_W;
-  canvas.width  = Math.round(WORLD_W * scale);
-  canvas.height = Math.round(WORLD_H * scale);
-  canvas.dataset.scale = scale;
+  const maxW = Math.min(window.innerWidth - 260, 960);
+  TILE = Math.floor(maxW / MAP_W);
+  canvas.width  = TILE * MAP_W;
+  canvas.height = TILE * MAP_H;
 }
 resize();
 window.addEventListener('resize', resize);
- 
+
 // ── State ─────────────────────────────────────────────────────────────────────
-let cur = null, prev = null, lastTick = 0;
-const TICK_MS = 1000 / 30;
- 
-// Role display chars
-const roleChar = { scout:'S', soldier:'M', tank:'T', healer:'H' };
- 
+let cur = null;
+let prevEvents = [];
+
 // ── WebSocket ─────────────────────────────────────────────────────────────────
+const dot     = document.getElementById('dot');
+const connLbl = document.getElementById('connLbl');
 let ws;
-const connDot   = document.getElementById('connDot');
-const connLabel = document.getElementById('connLabel');
- 
+
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
- 
-  ws.onopen = () => {
-    connDot.className = 'on';
-    connLabel.textContent = 'connected';
-  };
- 
-  ws.onmessage = evt => {
-    prev = cur;
-    cur  = JSON.parse(evt.data);
-    lastTick = performance.now();
-    updateHUD(cur);
-    if (cur.phase === 'result') showResult(cur.result);
-  };
- 
-  ws.onclose = () => {
-    connDot.className = '';
-    connLabel.textContent = 'reconnecting…';
-    setTimeout(connect, 2000);
-  };
+  ws.onopen  = () => { dot.className = 'dot on'; connLbl.textContent = 'connected'; };
+  ws.onclose = () => { dot.className = 'dot'; connLbl.textContent = 'reconnecting…'; setTimeout(connect, 2000); };
   ws.onerror = () => ws.close();
+  ws.onmessage = evt => {
+    prevEvents = cur ? [...cur.events] : [];
+    cur = JSON.parse(evt.data);
+    render(cur);
+    updateSidebar(cur);
+  };
 }
 connect();
- 
+
 document.getElementById('restartBtn').onclick = () => {
-  document.getElementById('resultOverlay').classList.remove('show');
   if (ws && ws.readyState === 1) ws.send('restart');
 };
- 
-// ── HUD update ────────────────────────────────────────────────────────────────
-function updateHUD(s) {
-  document.getElementById('phaseLabel').textContent = s.phase.toUpperCase();
-  const totalSec = Math.floor(s.elapsedSec);
-  const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
-  const ss = String(totalSec % 60).padStart(2, '0');
-  document.getElementById('timerDisp').textContent = `${mm}:${ss}`;
-  document.getElementById('aliveA').textContent   = s.teamA.alive;
-  document.getElementById('killsA').textContent   = s.teamA.kills;
-  document.getElementById('moraleA').textContent  = Math.round(s.teamA.morale);
-  document.getElementById('moraleBarA').style.width = s.teamA.morale + '%';
-  document.getElementById('aliveB').textContent   = s.teamB.alive;
-  document.getElementById('killsB').textContent   = s.teamB.kills;
-  document.getElementById('moraleB').textContent  = Math.round(s.teamB.morale);
-  document.getElementById('moraleBarB').style.width = s.teamB.morale + '%';
-}
- 
-function showResult(r) {
-  const overlay = document.getElementById('resultOverlay');
-  const title   = document.getElementById('resultTitle');
-  const sub     = document.getElementById('resultSub');
-  overlay.classList.add('show');
-  if (r.winner === -1) {
-    title.textContent = 'DRAW'; title.className = 'draw';
-    sub.textContent   = 'MUTUAL ANNIHILATION';
-  } else if (r.winner === 0) {
-    title.textContent = 'VICTORY'; title.className = 'red';
-    sub.textContent   = 'TEAM ALPHA WINS';
-  } else {
-    title.textContent = 'VICTORY'; title.className = 'blue';
-    sub.textContent   = 'TEAM BRAVO WINS';
+
+// ── Render map ────────────────────────────────────────────────────────────────
+function render(s) {
+  const T = TILE;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Build civ color map
+  const civColor = {};
+  for (const c of s.civs) civColor[c.id] = c.color;
+
+  // Build city lookup by tile
+  const cityAt = {};
+  for (const city of s.cities) cityAt[`${city.x},${city.y}`] = city;
+
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const tile = s.tiles[y][x];
+      const px = x * T, py = y * T;
+
+      // Base terrain
+      ctx.fillStyle = TERRAIN_COLOR[tile.terrain] || '#333';
+      ctx.fillRect(px, py, T, T);
+
+      // Territory tint (civ color, semi-transparent)
+      if (tile.civId !== -1 && civColor[tile.civId]) {
+        ctx.fillStyle = civColor[tile.civId] + '33'; // ~20% alpha
+        ctx.fillRect(px, py, T, T);
+      }
+
+      // Tile border (very subtle)
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(px, py, T, T);
+
+      // Resource icon
+      if (tile.resource && T >= 14) {
+        const icon = RES_ICON[tile.resource];
+        if (icon) {
+          ctx.font = `${Math.floor(T * 0.52)}px serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(icon, px + T/2, py + T/2);
+        }
+      }
+
+      // City
+      const city = cityAt[`${x},${y}`];
+      if (city) {
+        const col = civColor[city.civId] || '#fff';
+        // City circle
+        ctx.beginPath();
+        ctx.arc(px + T/2, py + T/2, T * 0.38, 0, Math.PI*2);
+        ctx.fillStyle = col;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Population number
+        if (T >= 12) {
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${Math.max(8, Math.floor(T * 0.42))}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(city.population, px + T/2, py + T/2);
+        }
+
+        // City name label
+        console.log(TILE);
+        if (T >= 14) {
+          ctx.fillStyle = '#fff';
+          ctx.font = `${Math.max(7, Math.floor(T * 0.38))}px 'Cinzel', serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          // Small shadow for readability
+          ctx.shadowColor = '#000';
+          ctx.shadowBlur = 3;
+          ctx.fillText(city.name, px + T/2, py + T + 1);
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
   }
-  document.getElementById('rKillsA').textContent   = r.teamA.kills;
-  document.getElementById('rKillsB').textContent   = r.teamB.kills;
-  document.getElementById('rMoraleA').textContent  = Math.round(r.teamA.morale);
-  document.getElementById('rMoraleB').textContent  = Math.round(r.teamB.morale);
-  const durSec = Math.floor(r.duration / 30);
-  const dmm = String(Math.floor(durSec / 60)).padStart(2, '0');
-  const dss = String(durSec % 60).padStart(2, '0');
-  document.getElementById('rDuration').textContent = `${dmm}:${dss}`;
-  document.getElementById('rMVP').textContent      = r.mvpName;
-  document.getElementById('rMVPKills').textContent = r.mvpKills;
+
+  // Border edges — draw thicker lines where civ territory changes
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const civ = s.tiles[y][x].civId;
+      if (civ === -1) continue;
+      const col = (civColor[civ] || '#fff') + 'cc';
+      const px = x * T, py = y * T;
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = col;
+      // Right edge
+      if (x+1 < MAP_W && s.tiles[y][x+1].civId !== civ) {
+        ctx.beginPath(); ctx.moveTo(px+T, py); ctx.lineTo(px+T, py+T); ctx.stroke();
+      }
+      // Bottom edge
+      if (y+1 < MAP_H && s.tiles[y+1][x].civId !== civ) {
+        ctx.beginPath(); ctx.moveTo(px, py+T); ctx.lineTo(px+T, py+T); ctx.stroke();
+      }
+      // Left edge
+      if (x === 0 || s.tiles[y][x-1].civId !== civ) {
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py+T); ctx.stroke();
+      }
+      // Top edge
+      if (y === 0 || s.tiles[y-1][x].civId !== civ) {
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px+T, py); ctx.stroke();
+      }
+    }
+  }
 }
- 
-// ── Interpolation ────────────────────────────────────────────────────────────
-function lerp(a, b, t) { return a + (b - a) * t; }
- 
-function interpUnits(p, c, t) {
-  if (!p) return c.units;
-  const pmap = {};
-  for (const u of p.units) pmap[u.id] = u;
-  return c.units.map(u => {
-    const pu = pmap[u.id];
-    if (!pu) return u;
-    return { ...u, x: lerp(pu.x, u.x, t), y: lerp(pu.y, u.y, t) };
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function updateSidebar(s) {
+  document.getElementById('turnNum').textContent = s.turn;
+
+  // Civ list
+  const civList = document.getElementById('civList');
+  civList.innerHTML = '';
+  for (const civ of s.civs) {
+    const row = document.createElement('div');
+    row.className = 'civ-row';
+    const cityCount = civ.cities.length;
+    // Find total population
+    let pop = 0;
+    for (const city of s.cities) {
+      if (city.civId === civ.id) pop += city.population;
+    }
+    row.innerHTML = `
+      <div class="civ-dot" style="background:${civ.color}"></div>
+      <div class="civ-name">${civ.name}</div>
+      <div class="civ-stats">
+        <div>🏛 ${cityCount} &nbsp; 👥 ${pop}</div>
+        <div>💰 ${civ.gold} &nbsp; 🔬 ${civ.science}</div>
+      </div>`;
+    civList.appendChild(row);
+  }
+
+  // Event log
+  const log = document.getElementById('eventLog');
+  log.innerHTML = '';
+  const reversed = [...s.events].reverse();
+  for (let i = 0; i < reversed.length; i++) {
+    const div = document.createElement('div');
+    div.className = 'event' + (i === 0 ? ' new' : '');
+    div.textContent = reversed[i];
+    log.appendChild(div);
+  }
+
+  // Legend (only once)
+  const leg = document.getElementById('legend');
+  if (!leg.childElementCount) {
+    for (const [name, color] of Object.entries(TERRAIN_COLOR)) {
+      leg.innerHTML += `<div class="leg"><div class="leg-sq" style="background:${color}"></div>${name}</div>`;
+    }
+  }
+}
+
+// ── Tooltip on hover ──────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+
+canvas.addEventListener('mousemove', e => {
+  if (!cur) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const tx = Math.floor(mx / TILE);
+  const ty = Math.floor(my / TILE);
+  if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) { tooltip.style.display='none'; return; }
+
+  const tile = cur.tiles[ty][tx];
+  const civColor = {};
+  for (const c of cur.civs) civColor[c.id] = c.color;
+  const cityAt = {};
+  for (const city of cur.cities) cityAt[`${city.x},${city.y}`] = city;
+  const city = cityAt[`${tx},${ty}`];
+
+  let html = `<div class="tt-title">${tile.terrain.charAt(0).toUpperCase()+tile.terrain.slice(1)}</div>`;
+  if (tile.resource) html += `<div>Resource: ${tile.resource}</div>`;
+  if (tile.civId !== -1) {
+    const civ = cur.civs[tile.civId];
+    if (civ) html += `<div class="tt-muted">Territory of <span style="color:${civ.color}">${civ.name}</span></div>`;
+  }
+  if (city) {
+    const civ = cur.civs[city.civId];
+    html += `<hr style="border-color:#21293a;margin:5px 0">`;
+    html += `<div class="tt-title" style="color:${civ?.color}">${city.name}</div>`;
+    html += `<div>Population: ${city.population}</div>`;
+    html += `<div>Food: ${city.yieldFood}/turn &nbsp; 🍞 ${city.foodBin}/${city.foodNeeded}</div>`;
+    html += `<div>Prod: ${city.yieldProd}/turn</div>`;
+    html += `<div>Gold: ${city.yieldGold}/turn</div>`;
+    if (city.currentBuild) html += `<div class="tt-muted">Building: ${city.currentBuild} (${city.buildProgress}/${getBuildingCost(city.currentBuild)})</div>`;
+    if (city.buildings.length) html += `<div class="tt-muted">Has: ${city.buildings.join(', ')}</div>`;
+  }
+
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
+  let lx = e.clientX - rect.left + 12;
+  let ly = e.clientY - rect.top + 12;
+  if (lx + 150 > canvas.width) lx -= 160;
+  if (ly + 160 > canvas.height) ly -= 160;
+  tooltip.style.left = lx + 'px';
+  tooltip.style.top  = ly + 'px';
+});
+
+canvas.addEventListener('mouseleave', () => { tooltip.style.display='none'; });
+
+// Building costs mirrored from Go (for tooltip display)
+const BUILDING_COSTS = { granary:40, market:60, workshop:50, monument:30 };
+function getBuildingCost(name) { return BUILDING_COSTS[name] || '?'; };
+
+function renderWondersSidebar(wonders, civs) {
+  const el = document.getElementById("wonders-sidebar");
+  el.innerHTML = "";
+
+  wonders.forEach(w => {
+    const div = document.createElement("div");
+    div.classList.add("wonder-item");
+
+    if (w.civId === -1) {
+      div.classList.add("unbuilt");
+      div.innerHTML = `<strong>${w.name}</strong><br>Non construite`;
+    } else {
+      const civ = civs.find(c => c.id === w.civId);
+      div.innerHTML = `
+        <strong>${w.name}</strong><br>
+        ${civ.name} (Tour ${w.turn})
+      `;
+    }
+
+    el.appendChild(div);
   });
 }
- 
-// ── Render ────────────────────────────────────────────────────────────────────
-const RED  = '#E24B4A', RED_L  = '#f09595';
-const BLUE = '#378ADD', BLUE_L = '#85B7EB';
-const WALL_COLOR  = '#1e2430';
-const WALL_STROKE = '#2d3547';
-const DROP_A = '#f09595', DROP_B = '#85B7EB';
- 
-function teamColor(team, light) {
-  return team === 0 ? (light ? RED_L : RED) : (light ? BLUE_L : BLUE);
-}
- 
-function draw() {
-  requestAnimationFrame(draw);
-  if (!cur) return;
- 
-  const scale = parseFloat(canvas.dataset.scale) || 1;
-  const W = canvas.width, H = canvas.height;
-  const t = Math.min((performance.now() - lastTick) / TICK_MS, 1);
-  const units = interpUnits(prev, cur, t);
- 
-  // Background
-  ctx.fillStyle = '#0a0b0e';
-  ctx.fillRect(0, 0, W, H);
- 
-  // Grid
-  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
-  ctx.lineWidth = 0.5;
-  const g = 50 * scale;
-  for (let x = 0; x < W; x += g) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-  for (let y = 0; y < H; y += g) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
- 
-  // Team territory tint
-  ctx.fillStyle = 'rgba(226,75,74,0.03)';
-  ctx.fillRect(0, 0, W/2, H);
-  ctx.fillStyle = 'rgba(55,138,221,0.03)';
-  ctx.fillRect(W/2, 0, W/2, H);
- 
-  // Centre line
-  ctx.setLineDash([6, 6]);
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
-  ctx.setLineDash([]);
- 
-  // Walls
-  for (const w of cur.walls) {
-    const wx = w.X * scale, wy = w.Y * scale, ww = w.W * scale, wh = w.H * scale;
-    ctx.fillStyle = WALL_COLOR;
-    ctx.fillRect(wx, wy, ww, wh);
-    ctx.strokeStyle = WALL_STROKE;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(wx, wy, ww, wh);
-  }
- 
-  // Mass drops
-  for (const d of cur.drops) {
+
+document.getElementById("open-tech-tree").addEventListener("click", () => {
+  document.getElementById("tech-modal").classList.add("open");
+  renderTechTree(cur);
+});
+
+function renderTechTree(state) {
+  const canvas = document.getElementById("tech-canvas");
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const eraSpacing = 150;
+
+  state.techTree.forEach((tech, i) => {
+    const x = 100 + tech.era * eraSpacing;
+    const y = 50 + i * 40;
+
+    // Est-ce que au moins une civ a la tech ?
+    const knownBy = state.civs.filter(c =>
+      c.knownTechs.includes(tech.id)
+    );
+
+    // Node
     ctx.beginPath();
-    ctx.arc(d.x * scale, d.y * scale, d.r * scale, 0, Math.PI*2);
-    ctx.fillStyle = d.color + '99';
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+
+    ctx.fillStyle = knownBy.length > 0 ? "#ffd700" : "#444";
     ctx.fill();
-  }
- 
-  // Attack range rings (faint, only for units in combat)
-  // (skipped for perf — add if desired)
- 
-  // Units
-  const sorted = [...units].sort((a,b) => a.r - b.r);
-  for (const u of sorted) {
-    const cx = u.x * scale, cy = u.y * scale, cr = u.r * scale;
-    const col  = teamColor(u.team, false);
-    const colL = teamColor(u.team, true);
- 
-    // HP arc background
-    ctx.beginPath();
-    ctx.arc(cx, cy, cr + 3*scale, 0, Math.PI*2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 2.5 * scale;
-    ctx.stroke();
- 
-    // HP arc fill
-    const hpFrac = Math.max(0, u.hp / u.maxHp);
-    ctx.beginPath();
-    ctx.arc(cx, cy, cr + 3*scale, -Math.PI/2, -Math.PI/2 + hpFrac * Math.PI*2);
-    ctx.strokeStyle = hpFrac > 0.5 ? col : '#E24B4A';
-    ctx.lineWidth = 2.5 * scale;
-    ctx.stroke();
- 
-    // Body
-    ctx.beginPath();
-    ctx.arc(cx, cy, cr, 0, Math.PI*2);
-    ctx.fillStyle = col + 'cc';
-    ctx.fill();
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
- 
-    // Role letter
-    const fs = Math.max(8, cr * 0.7);
-    ctx.font = `${fs}px 'Share Tech Mono', monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(roleChar[u.role] || '?', cx, cy);
- 
-    // Kill badge
-    if (u.kills > 0 && cr > 8) {
-      const bx = cx + cr * 0.7, by = cy - cr * 0.7;
+
+    // Nom
+    ctx.fillStyle = "#fff";
+    ctx.fillText(tech.name, x + 15, y);
+
+    // Dots par civ
+    knownBy.forEach((civ, idx) => {
+      ctx.fillStyle = civ.color;
+      ctx.fillRect(x - 5 + idx * 4, y + 12, 3, 3);
+    });
+
+    // Flèches prerequis
+    tech.requires.forEach(req => {
+      const from = state.techTree.find(t => t.id === req);
+      if (!from) return;
+
+      const fx = 100 + from.era * eraSpacing;
+      const fy = 50 + state.techTree.indexOf(from) * 40;
+
       ctx.beginPath();
-      ctx.arc(bx, by, 5 * scale, 0, Math.PI*2);
-      ctx.fillStyle = '#f5c542';
-      ctx.fill();
-      ctx.font = `${Math.max(6, 5*scale)}px 'Share Tech Mono', monospace`;
-      ctx.fillStyle = '#000';
-      ctx.fillText(u.kills, bx, by);
-    }
- 
-    // Low morale flee indicator
-    if (u.hp < u.maxHp * 0.15) {
-      ctx.font = `${Math.max(8, cr * 0.5)}px monospace`;
-      ctx.fillStyle = '#f5c542';
-      ctx.fillText('!', cx, cy - cr - 6*scale);
-    }
-  }
+      ctx.moveTo(fx, fy);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = "#666";
+      ctx.stroke();
+    });
+  });
 }
- 
-draw();
+
+function attachCityTooltip(cityElement, cityData) {
+  cityElement.addEventListener("mouseenter", () => {
+    const tooltip = document.getElementById("tooltip");
+
+    tooltip.innerHTML = `
+      <strong>${cityData.name}</strong><br>
+      Recherche : ${cityData.currentResearch.name}<br>
+      Progression : ${cityData.currentResearch.progress}%
+    `;
+
+    tooltip.style.display = "block";
+  });
+
+  cityElement.addEventListener("mouseleave", () => {
+    document.getElementById("tooltip").style.display = "none";
+  });
+}
+
+function getResearchProgress(civ, techTree) {
+  const tech = techTree.find(t => t.id === civ.currentResearch);
+  if (!tech) return 0;
+
+  return Math.floor((civ.scienceBin / tech.cost) * 100);
+}
+
+function showCityTooltip(city, civ, techTree, x, y) {
+  const tooltip = document.getElementById("tooltip");
+
+  const progress = getResearchProgress(civ, techTree);
+
+  tooltip.innerHTML = `
+    <strong>${city.name}</strong><br>
+    Recherche : ${civ.currentResearch || "Aucune"}<br>
+    Progression : ${progress}%
+  `;
+
+  tooltip.style.left = x + "px";
+  tooltip.style.top = y + "px";
+  tooltip.style.display = "block";
+}
