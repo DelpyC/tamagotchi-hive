@@ -1,67 +1,102 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Civilization Simulation</title>
+  <title>Simulation de Civilisation</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css"/>
-  <script src="the.js" defer></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-  <h1>CIVILIZATION SIMULATION — PHASE I</h1>
-  <div class="conn"><div class="dot" id="dot"></div><span id="connLbl">connecting…</span></div>
+  <h1>SIMULATION DE CIVILISATION</h1>
+  <div class="conn">
+    <div class="dot" id="dot"></div>
+    <span id="connLbl">connexion…</span>
+  </div>
 </header>
 
 <div class="main">
-  <!-- Map -->
-  <div id="mapWrap">
-    <canvas id="map"></canvas>
-    <div id="tooltip"></div>
+
+  <!-- Carte -->
+  <div class="map-col">
+    <div id="mapWrap">
+      <canvas id="map"></canvas>
+      <div id="tooltip"></div>
+    </div>
+
+    <!-- Légende terrain -->
+    <div class="panel legend-panel">
+      <div class="panel-title">Légende — Terrain</div>
+      <div class="legend" id="legend"></div>
+    </div>
   </div>
 
-  <!-- Sidebar -->
+  <!-- Barre latérale -->
   <div class="sidebar">
 
-    <div class="panel" style="text-align:center;">
-      <div class="turn-label">TURN</div>
+    <!-- Tour -->
+    <div class="panel tour-panel">
+      <div class="turn-label">TOUR</div>
       <div class="turn-num" id="turnNum">—</div>
+      <div class="turn-label" id="eraLabel">—</div>
     </div>
 
     <div class="panel">
-      <div class="panel-title">Civilizations</div>
+      <div class="panel-title">Classement Mondial</div>
+      <div id="powerBoard"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Progression Victoire</div>
+      <div id="victoryBoard"></div>
+    </div>
+
+    <!-- Civilisations -->
+    <div class="panel">
+      <div class="panel-title">Civilisations</div>
       <div id="civList"></div>
     </div>
 
+    <!-- Merveilles -->
     <div class="panel">
-      <div class="panel-title">Event Log</div>
+      <div class="panel-title">Merveilles du Monde</div>
+      <div id="wonderList"></div>
+    </div>
+
+    <!-- Journal d'événements -->
+    <div class="panel">
+      <div class="panel-title">Journal des Événements</div>
       <div class="events" id="eventLog"></div>
     </div>
 
-    <div class="panel">
-  <div class="panel-title">Wonders</div>
-  <div id="wonders-sidebar"></div>
+    <!-- Boutons -->
+    <button class="btn-action" id="techTreeBtn">🔬 ARBRE TECHNOLOGIQUE</button>
+    <button class="btn-action" id="restartBtn">🌍 NOUVEAU MONDE</button>
+
+  </div>
 </div>
 
-    <div class="panel">
-      <div class="panel-title">Terrain Legend</div>
-      <div class="legend" id="legend"></div>
+<!-- ── Modal arbre technologique ── -->
+<div id="techModal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">ARBRE TECHNOLOGIQUE</span>
+      <button class="modal-close" id="closeTechBtn">✕ Fermer</button>
     </div>
-
-    <button id="open-tech-tree">TECH TREE</button>
-
-    <button class="restart" id="restartBtn">NEW WORLD</button>
+    <div class="tech-era-labels" id="eraLabels"></div>
+    <div class="tech-canvas-wrap">
+      <canvas id="techCanvas"></canvas>
+    </div>
+    <div class="tech-legend">
+      <span class="tech-leg-item"><span class="tech-leg-known"></span> Découverte</span>
+      <span class="tech-leg-item"><span class="tech-leg-unknown"></span> Non découverte</span>
+      <span class="tech-leg-item">● Points colorés = civilisations qui possèdent la tech</span>
+    </div>
   </div>
 </div>
 
-<div id="tech-modal" class="modal">
-  <div class="modal-content">
-    <button id="close-tech-tree">X</button>
-    <canvas id="tech-canvas" width="800" height="600"></canvas>
-  </div>
-</div>
-
+<script src="the.js"></script>
 </body>
 </html>

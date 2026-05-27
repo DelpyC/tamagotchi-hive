@@ -19,6 +19,8 @@ const (
 	numCivs      = 6
 	turnInterval = 2 * time.Second
 	workRadius   = 3
+	maxTurns     = 280
+	settlerCost  = 70
 )
 
 // ── Terrain ──────────────────────────────────────────────────────────────────
@@ -107,19 +109,19 @@ var techTree = []TechDef{
 	// Era 1 — Classique
 	{ID: "writing", Name: "Écriture", Cost: 50, Era: 1, Requires: []string{"pottery"}, UnlocksBuildings: []string{"library"}},
 	{ID: "bronze", Name: "Bronze", Cost: 55, Era: 1, Requires: []string{"mining"}, UnlocksBuildings: []string{"barracks"}},
-	{ID: "masonry", Name: "Maçonnerie", Cost: 60, Era: 1, Requires: []string{"mining"}, UnlocksBuildings: []string{"walls"}, UnlocksWonders: []string{"les_pyramides"}},
+	{ID: "masonry", Name: "Maçonnerie", Cost: 60, Era: 1, Requires: []string{"mining"}, UnlocksBuildings: []string{"walls"}, UnlocksWonders: []string{"pyramids"}},
 	{ID: "calendar", Name: "Calendrier", Cost: 50, Era: 1, Requires: []string{"agriculture", "pottery"}, UnlocksBuildings: []string{"temple"}},
 	{ID: "mathematics", Name: "Mathématiques", Cost: 70, Era: 1, Requires: []string{"writing"}, UnlocksBuildings: []string{}},
 	// Era 2 — Médiéval
-	{ID: "iron_working", Name: "Travail du Fer", Cost: 100, Era: 2, Requires: []string{"bronze", "mining"}, UnlocksBuildings: []string{"forge"}, UnlocksWonders: []string{"colisee"}},
-	{ID: "philosophy", Name: "Philosophie", Cost: 110, Era: 2, Requires: []string{"writing", "calendar"}, UnlocksBuildings: []string{"university"}, UnlocksWonders: []string{"grande_bibliotheque"}},
+	{ID: "iron_working", Name: "Travail du Fer", Cost: 100, Era: 2, Requires: []string{"bronze", "mining"}, UnlocksBuildings: []string{"forge"}, UnlocksWonders: []string{"colosseum"}},
+	{ID: "philosophy", Name: "Philosophie", Cost: 110, Era: 2, Requires: []string{"writing", "calendar"}, UnlocksBuildings: []string{"university"}, UnlocksWonders: []string{"oxford_university"}},
 	{ID: "currency", Name: "Monnaie", Cost: 100, Era: 2, Requires: []string{"mathematics"}, UnlocksBuildings: []string{"market"}},
 	{ID: "construction", Name: "Construction", Cost: 110, Era: 2, Requires: []string{"masonry", "mathematics"}, UnlocksBuildings: []string{"aqueduct"}},
 	{ID: "engineering", Name: "Ingénierie", Cost: 120, Era: 2, Requires: []string{"construction"}, UnlocksBuildings: []string{"workshop"}},
 	// Era 3 — Renaissance
 	{ID: "education", Name: "Éducation", Cost: 180, Era: 3, Requires: []string{"philosophy", "currency"}, UnlocksBuildings: []string{}},
 	{ID: "astronomy", Name: "Astronomie", Cost: 190, Era: 3, Requires: []string{"education"}, UnlocksBuildings: []string{}},
-	{ID: "architecture", Name: "Architecture", Cost: 200, Era: 3, Requires: []string{"engineering", "education"}, UnlocksBuildings: []string{}, UnlocksWonders: []string{"tour_eiffel", "statue_liberte"}},
+	{ID: "architecture", Name: "Architecture", Cost: 200, Era: 3, Requires: []string{"engineering", "education"}, UnlocksBuildings: []string{}, UnlocksWonders: []string{"eiffel_tower", "statue_of_liberty"}},
 	{ID: "economics", Name: "Économie", Cost: 210, Era: 3, Requires: []string{"currency", "education"}, UnlocksBuildings: []string{"bank"}},
 	{ID: "gunpowder", Name: "Poudre à Canon", Cost: 220, Era: 3, Requires: []string{"iron_working", "engineering"}, UnlocksBuildings: []string{}},
 }
@@ -178,18 +180,19 @@ type WonderDef struct {
 }
 
 var wonderDefs = map[string]WonderDef{
-	"les_pyramides":       {ID: "les_pyramides", Name: "Les Pyramides", Description: "+3 nourriture dans toutes les villes, +2 culture/tour", Cost: 120, RequiresTech: "masonry", FoodBonus: 3, CultureBonus: 2},
-	"colisee":             {ID: "colisee", Name: "Le Colisée", Description: "+4 culture/tour, rend les citoyens heureux", Cost: 150, RequiresTech: "iron_working", CultureBonus: 4},
-	"grande_bibliotheque": {ID: "grande_bibliotheque", Name: "La Grande Bibliothèque", Description: "+6 science/tour + technologie gratuite", Cost: 200, RequiresTech: "philosophy", ScienceBonus: 6, FreeTech: true},
-	"tour_eiffel":         {ID: "tour_eiffel", Name: "La Tour Eiffel", Description: "+5 culture/tour, +3 or/tour", Cost: 250, RequiresTech: "architecture", CultureBonus: 5, GoldBonus: 3},
-	"statue_liberte":      {ID: "statue_liberte", Name: "La Statue de la Liberté", Description: "+4 science, +4 culture, +2 or par tour", Cost: 280, RequiresTech: "architecture", ScienceBonus: 4, CultureBonus: 4, GoldBonus: 2},
+	"pyramids":          {ID: "pyramids", Name: "Pyramids", Description: "+3 nourriture dans toutes les villes, +2 culture/tour", Cost: 120, RequiresTech: "masonry", FoodBonus: 3, CultureBonus: 2},
+	"colosseum":         {ID: "colosseum", Name: "Colosseum", Description: "+4 culture/tour, rend les citoyens heureux", Cost: 150, RequiresTech: "iron_working", CultureBonus: 4},
+	"oxford_university": {ID: "oxford_university", Name: "Oxford University", Description: "+6 science/tour + technologie gratuite", Cost: 200, RequiresTech: "philosophy", ScienceBonus: 6, FreeTech: true},
+	"eiffel_tower":      {ID: "eiffel_tower", Name: "Eiffel Tower", Description: "+5 culture/tour, +3 or/tour", Cost: 250, RequiresTech: "architecture", CultureBonus: 5, GoldBonus: 3},
+	"statue_of_liberty": {ID: "statue_of_liberty", Name: "Statue of Liberty", Description: "+4 science, +4 culture, +2 or par tour", Cost: 280, RequiresTech: "architecture", ScienceBonus: 4, CultureBonus: 4, GoldBonus: 2},
 }
 
 type WonderState struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	CivID int    `json:"civId"`
-	Turn  int    `json:"turn"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	CivID  int    `json:"civId"`
+	CityID int    `json:"cityId"`
+	Turn   int    `json:"turn"`
 }
 
 // ── Strategy priorities ───────────────────────────────────────────────────────
@@ -201,15 +204,15 @@ var strategyTechOrder = map[string][]string{
 }
 
 var strategyBuildOrder = map[string][]string{
-	"militarist":   {"barracks", "walls", "forge", "granary", "workshop", "market", "monument", "library", "temple", "harbor", "aqueduct", "university", "bank"},
-	"economic":     {"market", "harbor", "granary", "bank", "aqueduct", "library", "workshop", "forge", "monument", "temple", "barracks", "walls", "university"},
-	"expansionist": {"granary", "aqueduct", "monument", "temple", "market", "library", "harbor", "workshop", "forge", "barracks", "walls", "bank", "university"},
+	"militarist":   {"barracks", "walls", "settler", "forge", "granary", "workshop", "market", "monument", "library", "temple", "harbor", "aqueduct", "university", "bank"},
+	"economic":     {"market", "harbor", "settler", "granary", "bank", "aqueduct", "library", "workshop", "forge", "monument", "temple", "barracks", "walls", "university"},
+	"expansionist": {"settler", "granary", "aqueduct", "monument", "temple", "market", "library", "harbor", "workshop", "forge", "barracks", "walls", "bank", "university"},
 }
 
 var strategyWonderOrder = map[string][]string{
-	"militarist":   {"colisee", "les_pyramides", "grande_bibliotheque", "tour_eiffel", "statue_liberte"},
-	"economic":     {"grande_bibliotheque", "tour_eiffel", "statue_liberte", "les_pyramides", "colisee"},
-	"expansionist": {"les_pyramides", "statue_liberte", "grande_bibliotheque", "colisee", "tour_eiffel"},
+	"militarist":   {"colosseum", "pyramids", "oxford_university", "eiffel_tower", "statue_of_liberty"},
+	"economic":     {"oxford_university", "eiffel_tower", "statue_of_liberty", "pyramids", "colosseum"},
+	"expansionist": {"pyramids", "statue_of_liberty", "oxford_university", "colosseum", "eiffel_tower"},
 }
 
 // ── Tile ─────────────────────────────────────────────────────────────────────
@@ -219,6 +222,8 @@ type Tile struct {
 	Resource string `json:"resource"`
 	CivID    int    `json:"civId"`
 	CityID   int    `json:"cityId"`
+	Explored bool   `json:"explored"`
+	Visible  bool   `json:"visible"`
 	terrain  TerrainType
 	resource ResourceType
 }
@@ -245,6 +250,8 @@ type City struct {
 	CultureAccum  int      `json:"cultureAccum"`
 	BorderRadius  int      `json:"borderRadius"`
 	IsCoastal     bool     `json:"isCoastal"`
+	Defense       int      `json:"defense"`
+	MaxDefense    int      `json:"maxDefense"`
 }
 
 // ── Civ ───────────────────────────────────────────────────────────────────────
@@ -266,22 +273,28 @@ type Civ struct {
 	Era             int      `json:"era"`
 }
 
+type Unit struct {
+	ID       int    `json:"id"`
+	CivID    int    `json:"civId"`
+	X        int    `json:"x"`
+	Y        int    `json:"y"`
+	Strength int    `json:"strength"`
+	Type     string `json:"type"`
+}
+
 var civData = []struct{ name, color, strategy string }{
-	{"France", "#E24B4A", "militarist"},
-	{"Angleterre", "#378ADD", "economic"},
-	{"Russie", "#1D9E75", "expansionist"},
-	{"Espagne", "#BA7517", "expansionist"},
-	{"Italie", "#7F77DD", "militarist"},
-	{"Allemagne", "#D4537E", "militarist"},
+	{"Romains", "#E24B4A", "militarist"}, {"Grecs", "#378ADD", "economic"},
+	{"Perses", "#1D9E75", "expansionist"}, {"Égyptiens", "#BA7517", "expansionist"},
+	{"Vikings", "#7F77DD", "militarist"}, {"Mongols", "#D4537E", "militarist"},
 }
 
 var cityNamePool = [][]string{
-	{"Moscou", "Paris", "Londres", "Madrid", "Saint-Pétersbourg", "Milan"},
-	{"Barcelone", "Berlin", "Rome", "Bruxelles", "Athènes", "Kiev"},
-	{"Lisbonne", "Manchester", "Birmingham", "Lyon", "Lille", "Naples"},
-	{"Varsovie", "Minsk", "Vienne", "Yorkshire", "Bucarest", "Hambourg"},
-	{"Turin", "Porto", "Budapest", "Glasgow", "Marseille", "Munich"},
-	{"Stockholm", "Kharkiv", "Belgrade", "Zurich", "Toulouse", "Nice"},
+	{"Rome", "Antium", "Cumae", "Neapolis", "Capua", "Ravenna"},
+	{"Athènes", "Sparte", "Corinthe", "Argos", "Cnossos", "Pharsale"},
+	{"Persépolis", "Suse", "Pasargades", "Ecbatane", "Bactra", "Sardes"},
+	{"Le Caire", "Memphis", "Thèbes", "Alexandrie", "Héliopolis", "Louxor"},
+	{"Oslo", "Bergen", "Trondheim", "Uppsala", "Hedeby", "Ribe"},
+	{"Karakorum", "Samarkand", "Tabriz", "Khanbaliq", "Beshbalik", "Almaliq"},
 }
 
 // ── Game state ────────────────────────────────────────────────────────────────
@@ -290,11 +303,14 @@ type GameState struct {
 	Tiles    [][]Tile      `json:"tiles"`
 	Cities   []*City       `json:"cities"`
 	Civs     []*Civ        `json:"civs"`
+	Units    []*Unit       `json:"units"`
 	Wonders  []WonderState `json:"wonders"`
 	TechTree []TechDef     `json:"techTree"`
 	Turn     int           `json:"turn"`
 	Phase    string        `json:"phase"`
 	Events   []string      `json:"events"`
+	Winner   string        `json:"winner"`
+	Victory  string        `json:"victory"`
 }
 
 // ── Globals ──────────────────────────────────────────────────────────────────
@@ -553,6 +569,18 @@ func settlementScore(x, y, civID int) float64 {
 			score -= (8 - d) * 5
 		}
 	}
+	// Prefer safer expansion: avoid enemy armies, slightly prefer own military cover.
+	for _, u := range state.Units {
+		d := tileDist(x, y, u.X, u.Y)
+		if d > 6 {
+			continue
+		}
+		if u.CivID == civID {
+			score += (6 - d) * 0.6
+		} else {
+			score -= (6 - d) * 1.6
+		}
+	}
 	for dy := -2; dy <= 2; dy++ {
 		for dx := -2; dx <= 2; dx++ {
 			nx, ny := x+dx, y+dy
@@ -582,6 +610,27 @@ func findBestSettlement(civID int) (int, int, bool) {
 	return bx, by, found
 }
 
+func findBestSettlementFrom(civID, sx, sy int) (int, int, bool) {
+	best, bx, by := -1.0, sx, sy
+	found := false
+	for i := 0; i < 220; i++ {
+		x, y := rng.Intn(mapW), rng.Intn(mapH)
+		s := settlementScore(x, y, civID)
+		if s < 0 {
+			continue
+		}
+		// Prefer closer viable spots so settlers don't wander forever.
+		d := tileDist(x, y, sx, sy)
+		s -= d * 0.8
+		if s > best {
+			best = s
+			bx, by = x, y
+			found = true
+		}
+	}
+	return bx, by, found
+}
+
 func foundCity(civID, x, y int) *City {
 	civ := state.Civs[civID]
 	idx := len(civ.Cities)
@@ -589,13 +638,584 @@ func foundCity(civID, x, y int) *City {
 		idx = len(cityNamePool[civID]) - 1
 	}
 	city := &City{ID: newID(), Name: cityNamePool[civID][idx], CivID: civID, X: x, Y: y,
-		Population: 1, FoodNeeded: 10, Buildings: []string{}, BorderRadius: 1, IsCoastal: isCoastalCity(x, y)}
+		Population: 1, FoodNeeded: 10, Buildings: []string{}, BorderRadius: 1, IsCoastal: isCoastalCity(x, y), Defense: 10, MaxDefense: 10}
 	state.Tiles[y][x].CityID = city.ID
 	state.Tiles[y][x].CivID = civID
 	expandBorders(city)
 	civ.Cities = append(civ.Cities, city.ID)
 	state.Cities = append(state.Cities, city)
 	return city
+}
+
+func addUnit(civID, x, y int, str int, kind string) {
+	if x < 0 || x >= mapW || y < 0 || y >= mapH {
+		return
+	}
+	if !isLand(state.Tiles[y][x].terrain) {
+		return
+	}
+	for _, u := range state.Units {
+		if u.X == x && u.Y == y {
+			return
+		}
+	}
+	state.Units = append(state.Units, &Unit{
+		ID:       newID(),
+		CivID:    civID,
+		X:        x,
+		Y:        y,
+		Strength: str,
+		Type:     kind,
+	})
+}
+
+func spawnGarrisonForCity(city *City) {
+	kind := "melee"
+	civ := state.Civs[city.CivID]
+	if civ.Era >= 2 && rng.Intn(3) == 0 {
+		kind = "ranged"
+	}
+	if civ.Era >= 3 && civ.Strategy == "militarist" && rng.Intn(4) == 0 {
+		kind = "cavalry"
+	}
+	addUnit(city.CivID, city.X, city.Y, 2+civ.Era, kind)
+}
+
+func spawnStartingSettlers() {
+	for _, civ := range state.Civs {
+		x, y, ok := findBestSettlement(civ.ID)
+		if !ok {
+			continue
+		}
+		addUnit(civ.ID, x, y, 1, "settler")
+	}
+}
+
+func rebuildCivCityLists() {
+	for _, civ := range state.Civs {
+		civ.Cities = civ.Cities[:0]
+	}
+	for _, city := range state.Cities {
+		if city.CivID >= 0 && city.CivID < len(state.Civs) {
+			state.Civs[city.CivID].Cities = append(state.Civs[city.CivID].Cities, city.ID)
+		}
+	}
+	for _, civ := range state.Civs {
+		civ.Alive = len(civ.Cities) > 0
+	}
+}
+
+func unitAt(x, y int) *Unit {
+	for _, u := range state.Units {
+		if u.X == x && u.Y == y {
+			return u
+		}
+	}
+	return nil
+}
+
+func nearestEnemyCity(u *Unit) *City {
+	var best *City
+	bestD := 1e9
+	for _, c := range state.Cities {
+		if c.CivID == u.CivID {
+			continue
+		}
+		d := tileDist(u.X, u.Y, c.X, c.Y)
+		if d < bestD {
+			bestD = d
+			best = c
+		}
+	}
+	return best
+}
+
+func nearestEnemyUnit(u *Unit, maxDist float64) *Unit {
+	var best *Unit
+	bestD := 1e9
+	for _, other := range state.Units {
+		if other.CivID == u.CivID || other.Type == "settler" {
+			continue
+		}
+		d := tileDist(u.X, u.Y, other.X, other.Y)
+		if d <= maxDist && d < bestD {
+			bestD = d
+			best = other
+		}
+	}
+	return best
+}
+
+func adjacentSupport(x, y, civID int, excludeID int) int {
+	n := 0
+	for _, u := range state.Units {
+		if u.ID == excludeID || u.CivID != civID || u.Type == "settler" {
+			continue
+		}
+		if abs(u.X-x) <= 1 && abs(u.Y-y) <= 1 {
+			n++
+		}
+	}
+	return n
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func nearestCityOf(civID, x, y int) *City {
+	var best *City
+	bestD := 1e9
+	for _, c := range state.Cities {
+		if c.CivID != civID {
+			continue
+		}
+		d := tileDist(x, y, c.X, c.Y)
+		if d < bestD {
+			bestD = d
+			best = c
+		}
+	}
+	return best
+}
+
+func sign(v int) int {
+	if v < 0 {
+		return -1
+	}
+	if v > 0 {
+		return 1
+	}
+	return 0
+}
+
+func resolveBattle(att, def *Unit) *Unit {
+	typeBonus := func(kind string) int {
+		switch kind {
+		case "ranged":
+			return 1
+		case "cavalry":
+			return 2
+		default:
+			return 0
+		}
+	}
+	attRoll := att.Strength + typeBonus(att.Type) + rng.Intn(3)
+	defRoll := def.Strength + typeBonus(def.Type) + rng.Intn(3)
+	if attRoll >= defRoll {
+		att.Strength = imax(1, att.Strength-1)
+		return att
+	}
+	def.Strength = imax(1, def.Strength-1)
+	return def
+}
+
+func removeUnitByID(id int) {
+	for i, u := range state.Units {
+		if u.ID == id {
+			state.Units = append(state.Units[:i], state.Units[i+1:]...)
+			return
+		}
+	}
+}
+
+func runSettlers() {
+	if len(state.Units) == 0 {
+		return
+	}
+	occupied := make(map[[2]int]*Unit, len(state.Units))
+	for _, ou := range state.Units {
+		occupied[[2]int{ou.X, ou.Y}] = ou
+	}
+	consume := []int{}
+	for _, u := range state.Units {
+		if u.Type != "settler" {
+			continue
+		}
+		civ := state.Civs[u.CivID]
+		if !civ.Alive && len(civ.Cities) > 0 {
+			continue
+		}
+		// Found immediately if location is valid.
+		if settlementScore(u.X, u.Y, u.CivID) >= 0 {
+			city := foundCity(u.CivID, u.X, u.Y)
+			state.Events = append(state.Events, civ.Name+" fonde "+city.Name)
+			spawnGarrisonForCity(city)
+			consume = append(consume, u.ID)
+			continue
+		}
+
+		tx, ty, ok := findBestSettlementFrom(u.CivID, u.X, u.Y)
+		if !ok {
+			continue
+		}
+		dx := sign(tx - u.X)
+		dy := sign(ty - u.Y)
+		candidates := [][2]int{
+			{u.X + dx, u.Y + dy},
+			{u.X + dx, u.Y},
+			{u.X, u.Y + dy},
+			{u.X - dx, u.Y},
+			{u.X, u.Y - dy},
+		}
+		for _, c := range candidates {
+			nx, ny := c[0], c[1]
+			if nx < 0 || nx >= mapW || ny < 0 || ny >= mapH {
+				continue
+			}
+			if !isLand(state.Tiles[ny][nx].terrain) {
+				continue
+			}
+			if occupied[[2]int{nx, ny}] != nil {
+				continue
+			}
+			delete(occupied, [2]int{u.X, u.Y})
+			u.X, u.Y = nx, ny
+			occupied[[2]int{u.X, u.Y}] = u
+			break
+		}
+	}
+	for _, id := range consume {
+		// Cleanup occupancy before unit removal.
+		for _, u := range state.Units {
+			if u.ID == id {
+				delete(occupied, [2]int{u.X, u.Y})
+				break
+			}
+		}
+		removeUnitByID(id)
+	}
+}
+
+func runUnitsAndWars() {
+	if len(state.Units) == 0 {
+		return
+	}
+	occupied := make(map[[2]int]*Unit, len(state.Units))
+	for _, ou := range state.Units {
+		occupied[[2]int{ou.X, ou.Y}] = ou
+	}
+
+	// Basic production of new military units.
+	for _, civ := range state.Civs {
+		if !civ.Alive || len(civ.Cities) == 0 {
+			continue
+		}
+		unitCount := 0
+		for _, u := range state.Units {
+			if u.CivID == civ.ID {
+				unitCount++
+			}
+		}
+		capacity := len(civ.Cities)*2 + 1
+		if unitCount >= capacity || civ.Gold < 18 {
+			continue
+		}
+		home := state.Cities[rng.Intn(len(state.Cities))]
+		for home.CivID != civ.ID {
+			home = state.Cities[rng.Intn(len(state.Cities))]
+		}
+		civ.Gold -= 18
+		spawnGarrisonForCity(home)
+		state.Events = append(state.Events, fmt.Sprintf("%s lève une unité à %s", civ.Name, home.Name))
+	}
+
+	// Move units and resolve encounters.
+	for _, u := range state.Units {
+		if u.Type == "settler" {
+			continue
+		}
+		civ := state.Civs[u.CivID]
+		if !civ.Alive {
+			continue
+		}
+		// Prefer nearby enemy armies first; otherwise push toward cities.
+		targetUnit := nearestEnemyUnit(u, 7)
+		target := nearestEnemyCity(u)
+		tx, ty := u.X, u.Y
+		if targetUnit != nil {
+			tx, ty = targetUnit.X, targetUnit.Y
+		} else if target != nil {
+			tx, ty = target.X, target.Y
+		} else {
+			continue
+		}
+		dx := sign(tx - u.X)
+		dy := sign(ty - u.Y)
+		candidates := [][2]int{
+			{u.X + dx, u.Y + dy},
+			{u.X + dx, u.Y},
+			{u.X, u.Y + dy},
+			{u.X + dx, u.Y - dy},
+			{u.X - dx, u.Y + dy},
+		}
+
+		nx, ny := u.X, u.Y
+		for _, c := range candidates {
+			tx, ty := c[0], c[1]
+			if tx < 0 || tx >= mapW || ty < 0 || ty >= mapH {
+				continue
+			}
+			if !isLand(state.Tiles[ty][tx].terrain) {
+				continue
+			}
+			occ := occupied[[2]int{tx, ty}]
+			if occ != nil && occ.CivID == u.CivID {
+				continue
+			}
+			nx, ny = tx, ty
+			break
+		}
+
+		if nx == u.X && ny == u.Y {
+			continue
+		}
+
+		if enemy := occupied[[2]int{nx, ny}]; enemy != nil && enemy.CivID != u.CivID {
+			winner := resolveBattle(u, enemy)
+			loser := enemy
+			if winner.ID != enemy.ID {
+				loser = u
+			}
+			delete(occupied, [2]int{loser.X, loser.Y})
+			removeUnitByID(loser.ID)
+			if winner.ID == u.ID {
+				delete(occupied, [2]int{u.X, u.Y})
+				u.X, u.Y = nx, ny
+				occupied[[2]int{u.X, u.Y}] = u
+			}
+			state.Events = append(state.Events, fmt.Sprintf("⚔ %s remporte un combat", state.Civs[winner.CivID].Name))
+			continue
+		}
+
+		delete(occupied, [2]int{u.X, u.Y})
+		u.X, u.Y = nx, ny
+		occupied[[2]int{u.X, u.Y}] = u
+
+		// City siege/capture.
+		for _, c := range state.Cities {
+			if c.X == u.X && c.Y == u.Y && c.CivID != u.CivID {
+				support := adjacentSupport(c.X, c.Y, u.CivID, u.ID)
+				damage := imax(1, u.Strength/3+support/2)
+				if u.Type == "ranged" {
+					damage++
+				}
+				// Lone units struggle to crack cities.
+				if support == 0 {
+					damage = 1
+				}
+				c.Defense -= damage
+				state.Events = append(state.Events, fmt.Sprintf("⚔ %s assiège %s (%d/%d)", state.Civs[u.CivID].Name, c.Name, imax(0, c.Defense), c.MaxDefense))
+				// City retaliates against attackers.
+				ret := 1 + c.MaxDefense/10
+				if hasBuilding(c, "walls") {
+					ret++
+				}
+				u.Strength -= ret
+				if u.Strength <= 0 {
+					state.Events = append(state.Events, fmt.Sprintf("🛡 %s repousse l'assaut contre %s", state.Civs[c.CivID].Name, c.Name))
+					removeUnitByID(u.ID)
+					break
+				}
+				if c.Defense <= 0 {
+					old := c.CivID
+					c.CivID = u.CivID
+					c.BorderRadius = imax(1, c.BorderRadius-1)
+					c.Defense = c.MaxDefense / 2
+					for i := range state.Wonders {
+						if state.Wonders[i].CityID == c.ID {
+							state.Wonders[i].CivID = u.CivID
+						}
+					}
+					expandBorders(c)
+					rebuildCivCityLists()
+					state.Events = append(state.Events, fmt.Sprintf("🏴 %s capture %s", state.Civs[u.CivID].Name, c.Name))
+					if old >= 0 && old < len(state.Civs) && !state.Civs[old].Alive {
+						state.Events = append(state.Events, fmt.Sprintf("☠ %s est éliminée", state.Civs[old].Name))
+					}
+				}
+				break
+			}
+		}
+	}
+}
+
+func runBorderPressure() {
+	for _, city := range state.Cities {
+		owner := city.CivID
+		if owner < 0 || owner >= len(state.Civs) {
+			continue
+		}
+		pressure := 1 + state.Civs[owner].Era/2 + city.Population/4
+		if hasBuilding(city, "monument") {
+			pressure++
+		}
+		if hasBuilding(city, "temple") {
+			pressure++
+		}
+		r := city.BorderRadius + 1
+		bestScore := -9999.0
+		bestX, bestY := -1, -1
+		for dy := -r; dy <= r; dy++ {
+			for dx := -r; dx <= r; dx++ {
+				nx, ny := city.X+dx, city.Y+dy
+				if nx < 0 || nx >= mapW || ny < 0 || ny >= mapH {
+					continue
+				}
+				if dx == 0 && dy == 0 {
+					continue
+				}
+				if !isLand(state.Tiles[ny][nx].terrain) {
+					continue
+				}
+				t := &state.Tiles[ny][nx]
+				if t.CityID != -1 || t.CivID == owner {
+					continue
+				}
+				// Don't instantly steal deeply-held cores.
+				if t.CivID != -1 {
+					if other := nearestCityOf(t.CivID, nx, ny); other != nil {
+						if tileDist(nx, ny, other.X, other.Y) <= 2.2 {
+							continue
+						}
+					}
+				}
+				d := tileDist(nx, ny, city.X, city.Y)
+				score := float64(pressure) - d*1.2
+				if t.CivID == -1 {
+					score += 1.2
+				}
+				if score > bestScore {
+					bestScore = score
+					bestX, bestY = nx, ny
+				}
+			}
+		}
+		if bestX != -1 && bestScore > 0 {
+			state.Tiles[bestY][bestX].CivID = owner
+		}
+	}
+}
+
+func checkVictory() {
+	if state.Phase == "ended" {
+		return
+	}
+
+	alive := []*Civ{}
+	for _, civ := range state.Civs {
+		if civ.Alive {
+			alive = append(alive, civ)
+		}
+	}
+	if len(alive) == 1 {
+		state.Phase = "ended"
+		state.Winner = alive[0].Name
+		state.Victory = "Domination"
+		state.Events = append(state.Events, "👑 "+alive[0].Name+" remporte une victoire de Domination")
+		return
+	}
+
+	for _, civ := range state.Civs {
+		if len(civ.KnownTechs) >= 18 {
+			state.Phase = "ended"
+			state.Winner = civ.Name
+			state.Victory = "Science"
+			state.Events = append(state.Events, "🚀 "+civ.Name+" remporte une victoire Scientifique")
+			return
+		}
+	}
+
+	wCount := map[int]int{}
+	for _, w := range state.Wonders {
+		if w.CivID != -1 {
+			wCount[w.CivID]++
+		}
+	}
+	for civID, n := range wCount {
+		if n >= 3 {
+			state.Phase = "ended"
+			state.Winner = state.Civs[civID].Name
+			state.Victory = "Culture"
+			state.Events = append(state.Events, "🎭 "+state.Civs[civID].Name+" remporte une victoire Culturelle")
+			return
+		}
+	}
+
+	if state.Turn >= maxTurns {
+		best := state.Civs[0]
+		bestScore := -1
+		for _, civ := range state.Civs {
+			pop := 0
+			for _, city := range state.Cities {
+				if city.CivID == civ.ID {
+					pop += city.Population
+				}
+			}
+			score := civ.Science + civ.Gold + pop*10 + len(civ.Cities)*35 + civ.Era*60
+			if score > bestScore {
+				bestScore = score
+				best = civ
+			}
+		}
+		state.Phase = "ended"
+		state.Winner = best.Name
+		state.Victory = "Score"
+		state.Events = append(state.Events, "⏳ Fin d'ère: "+best.Name+" gagne aux points")
+	}
+}
+
+func updateVisibility() {
+	// Reset current visibility every turn; exploration stays once discovered.
+	for y := 0; y < mapH; y++ {
+		for x := 0; x < mapW; x++ {
+			state.Tiles[y][x].Visible = false
+		}
+	}
+
+	// Before first settlements, show the whole map instead of a fully black screen.
+	if len(state.Cities) == 0 {
+		for y := 0; y < mapH; y++ {
+			for x := 0; x < mapW; x++ {
+				state.Tiles[y][x].Visible = true
+				state.Tiles[y][x].Explored = true
+			}
+		}
+		return
+	}
+
+	// Aggregate FoW from all cities (shared "observer" view for the simulation).
+	for _, city := range state.Cities {
+		vr := city.BorderRadius + 1
+		for dy := -vr; dy <= vr; dy++ {
+			for dx := -vr; dx <= vr; dx++ {
+				if dx*dx+dy*dy > vr*vr {
+					continue
+				}
+				nx, ny := city.X+dx, city.Y+dy
+				if nx < 0 || nx >= mapW || ny < 0 || ny >= mapH {
+					continue
+				}
+				state.Tiles[ny][nx].Visible = true
+				state.Tiles[ny][nx].Explored = true
+			}
+		}
+	}
+	for _, u := range state.Units {
+		for dy := -1; dy <= 1; dy++ {
+			for dx := -1; dx <= 1; dx++ {
+				nx, ny := u.X+dx, u.Y+dy
+				if nx < 0 || nx >= mapW || ny < 0 || ny >= mapH {
+					continue
+				}
+				state.Tiles[ny][nx].Visible = true
+				state.Tiles[ny][nx].Explored = true
+			}
+		}
+	}
 }
 
 // ── Tech AI ───────────────────────────────────────────────────────────────────
@@ -658,6 +1278,19 @@ func civEra(civ *Civ) int {
 	return era
 }
 
+func effectiveTechCost(civ *Civ, td *TechDef) int {
+	if td == nil {
+		return 999999
+	}
+	known := len(civ.KnownTechs)
+	// Progressive scaling slows late-game beelining.
+	scale := 1.0 + float64(known)*0.09 + float64(td.Era)*0.12
+	if scale < 1 {
+		scale = 1
+	}
+	return int(math.Round(float64(td.Cost) * scale))
+}
+
 // ── Build AI ──────────────────────────────────────────────────────────────────
 
 func aiChooseBuild(city *City) string {
@@ -679,6 +1312,21 @@ func aiChooseBuild(city *City) string {
 		}
 	}
 	for _, bID := range strategyBuildOrder[civ.Strategy] {
+		if bID == "settler" {
+			if city.Population < 2 {
+				continue
+			}
+			settlers := 0
+			for _, u := range state.Units {
+				if u.CivID == civ.ID && u.Type == "settler" {
+					settlers++
+				}
+			}
+			if settlers >= 2 || len(civ.Cities) >= 2+state.Turn/14 {
+				continue
+			}
+			return "settler"
+		}
 		if hasBuilding(city, bID) {
 			continue
 		}
@@ -694,7 +1342,21 @@ func aiChooseBuild(city *City) string {
 		}
 		return bID
 	}
-	return strategyBuildOrder[civ.Strategy][0]
+	for _, bID := range strategyBuildOrder[civ.Strategy] {
+		if bID == "settler" {
+			continue
+		}
+		if def, ok := buildings[bID]; ok {
+			if def.RequiresTech != "" && !hasTech(civ, def.RequiresTech) {
+				continue
+			}
+			if bID == "harbor" && !city.IsCoastal {
+				continue
+			}
+			return bID
+		}
+	}
+	return "monument"
 }
 
 // ── Turn ─────────────────────────────────────────────────────────────────────
@@ -702,54 +1364,42 @@ func aiChooseBuild(city *City) string {
 func processTurn() {
 	stateMu.Lock()
 	defer stateMu.Unlock()
+	if state.Phase == "ended" {
+		return
+	}
 	state.Turn++
 	if len(state.Events) > 16 {
 		state.Events = state.Events[len(state.Events)-16:]
 	}
 
 	if state.Turn == 1 {
-		for _, civ := range state.Civs {
-			if x, y, ok := findBestSettlement(civ.ID); ok {
-				city := foundCity(civ.ID, x, y)
-				state.Events = append(state.Events, civ.Name+" fonde "+city.Name)
-			}
-		}
-		return
+		state.Events = append(state.Events, "Les colons partent fonder leurs capitales…")
+		updateVisibility()
 	}
 
-	// Research
+	// Reset per-turn yields before recomputing economy.
 	for _, civ := range state.Civs {
 		if !civ.Alive {
 			continue
 		}
-		if civ.CurrentResearch == "" {
-			civ.CurrentResearch = aiChooseResearch(civ)
-		}
-		if civ.CurrentResearch == "" {
-			continue
-		}
-		td := techByID[civ.CurrentResearch]
-		if td == nil {
-			civ.CurrentResearch = ""
-			continue
-		}
-		civ.ScienceBin += civ.Science
-		if civ.ScienceBin >= td.Cost {
-			civ.ScienceBin -= td.Cost
-			civ.KnownTechs = append(civ.KnownTechs, td.ID)
-			civ.Era = civEra(civ)
-			state.Events = append(state.Events, fmt.Sprintf("%s découvre %s", civ.Name, td.Name))
-			civ.CurrentResearch = aiChooseResearch(civ)
-		}
+		civ.Science = 0
+		civ.Culture = 0
 	}
 
 	// Cities
 	for _, city := range state.Cities {
+		city.MaxDefense = 10 + state.Civs[city.CivID].Era*2
+		if hasBuilding(city, "walls") {
+			city.MaxDefense += 4
+		}
+		if city.Defense < city.MaxDefense {
+			city.Defense++
+		}
 		food, prod, gold, sci, cult := calcYields(city)
 		city.YieldFood, city.YieldProd, city.YieldGold, city.YieldScience, city.YieldCulture = food, prod, gold, sci, cult
 		civ := state.Civs[city.CivID]
 		civ.Gold += gold
-		civ.Science += sci + 1 + city.Population/3
+		civ.Science += sci + imax(1, city.Population/4)
 		civ.Culture += cult + 1
 		city.FoodBin += food
 		if city.FoodBin >= city.FoodNeeded {
@@ -761,9 +1411,7 @@ func processTurn() {
 		city.CultureAccum += imax(1, civ.Culture/imax(1, len(civ.Cities)))
 		if newR := 1 + city.CultureAccum/25; newR > city.BorderRadius && newR <= 4 {
 			city.BorderRadius = newR
-			for _, civ := range state.Civs {
-				expandTerritory(civ.ID, len(civ.Cities))
-			}
+			expandBorders(city)
 			state.Events = append(state.Events, city.Name+": frontières étendues")
 		}
 		if city.CurrentBuild == "" {
@@ -782,6 +1430,7 @@ func processTurn() {
 				for i := range state.Wonders {
 					if state.Wonders[i].ID == wID {
 						state.Wonders[i].CivID = city.CivID
+						state.Wonders[i].CityID = city.ID
 						state.Wonders[i].Turn = state.Turn
 						break
 					}
@@ -790,12 +1439,30 @@ func processTurn() {
 				if wd.FreeTech {
 					grantFreeTech(civ)
 				}
+				spawnGarrisonForCity(city)
+				city.BuildProgress = 0
+				city.CurrentBuild = ""
+			}
+		} else if city.CurrentBuild == "settler" {
+			if city.BuildProgress >= settlerCost {
+				addUnit(city.CivID, city.X, city.Y, 1, "settler")
+				if city.Population > 1 {
+					city.Population--
+					city.FoodNeeded = city.Population * 10
+					if city.FoodBin > city.FoodNeeded {
+						city.FoodBin = city.FoodNeeded
+					}
+				}
+				state.Events = append(state.Events, fmt.Sprintf("%s forme un colon", city.Name))
 				city.BuildProgress = 0
 				city.CurrentBuild = ""
 			}
 		} else if def, ok := buildings[city.CurrentBuild]; ok && city.BuildProgress >= def.Cost {
 			city.Buildings = append(city.Buildings, city.CurrentBuild)
 			state.Events = append(state.Events, fmt.Sprintf("%s construit %s", city.Name, def.Name))
+			if city.CurrentBuild == "barracks" || city.CurrentBuild == "forge" {
+				spawnGarrisonForCity(city)
+			}
 			city.BuildProgress = 0
 			city.CurrentBuild = ""
 		}
@@ -820,20 +1487,42 @@ func processTurn() {
 		}
 	}
 
-	// Expansion
+	// Research (after current-turn yields are computed).
 	for _, civ := range state.Civs {
 		if !civ.Alive {
 			continue
 		}
-		if len(civ.Cities) >= 2+state.Turn/12 || civ.Gold < 15 {
+		if civ.CurrentResearch == "" {
+			civ.CurrentResearch = aiChooseResearch(civ)
+		}
+		if civ.CurrentResearch == "" {
+			civ.ResearchProg = 0
 			continue
 		}
-		if x, y, ok := findBestSettlement(civ.ID); ok {
-			city := foundCity(civ.ID, x, y)
-			civ.Gold -= 15
-			state.Events = append(state.Events, civ.Name+" fonde "+city.Name)
+		td := techByID[civ.CurrentResearch]
+		if td == nil {
+			civ.CurrentResearch = ""
+			civ.ResearchProg = 0
+			continue
+		}
+		cost := effectiveTechCost(civ, td)
+		civ.ScienceBin += civ.Science
+		civ.ResearchProg = int(math.Min(100, math.Round((float64(civ.ScienceBin)/float64(cost))*100)))
+		if civ.ScienceBin >= cost {
+			civ.ScienceBin -= cost
+			civ.KnownTechs = append(civ.KnownTechs, td.ID)
+			civ.Era = civEra(civ)
+			state.Events = append(state.Events, fmt.Sprintf("%s dÃ©couvre %s", civ.Name, td.Name))
+			civ.CurrentResearch = aiChooseResearch(civ)
+			civ.ResearchProg = 0
 		}
 	}
+
+	runSettlers()
+	runBorderPressure()
+	runUnitsAndWars()
+	checkVictory()
+	updateVisibility()
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
@@ -847,9 +1536,11 @@ func initGame() {
 	}
 	wonders := []WonderState{}
 	for _, wd := range wonderDefs {
-		wonders = append(wonders, WonderState{ID: wd.ID, Name: wd.Name, CivID: -1})
+		wonders = append(wonders, WonderState{ID: wd.ID, Name: wd.Name, CivID: -1, CityID: -1})
 	}
-	state = GameState{Tiles: generateMap(), Cities: []*City{}, Civs: civs, Wonders: wonders, TechTree: techTree, Turn: 0, Phase: "running", Events: []string{"Les civilisations s'éveillent…"}}
+	state = GameState{Tiles: generateMap(), Cities: []*City{}, Civs: civs, Units: []*Unit{}, Wonders: wonders, TechTree: techTree, Turn: 0, Phase: "running", Events: []string{"Les civilisations s'éveillent…"}}
+	spawnStartingSettlers()
+	updateVisibility()
 }
 
 // ── Broadcast & HTTP ──────────────────────────────────────────────────────────
@@ -907,86 +1598,6 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			broadcast()
 		}
 	}
-}
-
-func ownsTiles(x, y, civID int) bool {
-	return state.Tiles[y][x].CivID == civID
-}
-
-func isFrontier(x, y, civID int) bool {
-	dirs := [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
-
-	if !ownsTiles(x, y, civID) {
-		return false
-	}
-
-	for _, d := range dirs {
-		nx, ny := x+d[0], y+d[1]
-		if nx < 0 || nx >= mapW || ny < 0 || ny >= mapH {
-			continue
-		}
-		if state.Tiles[ny][nx].CivID != civID {
-			return true // border tile
-		}
-	}
-	return false
-}
-
-func expandTerritory(civID int, maxTiles int) int {
-	frontier := [][2]int{}
-
-	// 1. Find frontier tiles
-	for y := 0; y < mapH; y++ {
-		for x := 0; x < mapW; x++ {
-			if isFrontier(x, y, civID) {
-				frontier = append(frontier, [2]int{x, y})
-			}
-		}
-	}
-
-	// 2. Shuffle frontier (IMPORTANT: avoids directional bias)
-	rng.Shuffle(len(frontier), func(i, j int) {
-		frontier[i], frontier[j] = frontier[j], frontier[i]
-	})
-
-	dirs := [][2]int{
-		{-1, 0}, {1, 0}, {0, -1}, {0, 1},
-	}
-
-	expanded := 0
-
-	// 3. Expand from frontier
-	for _, f := range frontier {
-		if expanded >= maxTiles {
-			break
-		}
-
-		x, y := f[0], f[1]
-
-		// shuffle directions too (more natural spread)
-		rng.Shuffle(len(dirs), func(i, j int) {
-			dirs[i], dirs[j] = dirs[j], dirs[i]
-		})
-
-		for _, d := range dirs {
-			nx, ny := x+d[0], y+d[1]
-
-			if nx < 0 || nx >= mapW || ny < 0 || ny >= mapH {
-				continue
-			}
-
-			tile := &state.Tiles[ny][nx]
-
-			// Only expand into neutral land
-			if tile.CivID == -1 && isLand(tile.terrain) {
-				tile.CivID = civID
-				expanded++
-				break // move to next frontier tile
-			}
-		}
-	}
-
-	return expanded
 }
 
 func main() {
