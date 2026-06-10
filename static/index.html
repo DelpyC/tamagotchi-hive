@@ -9,11 +9,41 @@
 </head>
 <body>
 
+<div class="start-screen" id="startScreen">
+  <div class="start-panel">
+    <div class="start-kicker">Nouvelle simulation</div>
+    <h2>Choisir un objectif</h2>
+    <div class="start-options">
+      <button class="start-option selected" data-objective="normal">
+        <span>Civilisation normale</span>
+        <small>Toutes les victoires sont possibles</small>
+      </button>
+      <button class="start-option" data-objective="domination">
+        <span>Domination</span>
+        <small>Gagner en eliminant les autres civilisations</small>
+      </button>
+      <button class="start-option" data-objective="science">
+        <span>Science</span>
+        <small>Gagner grace aux technologies</small>
+      </button>
+      <button class="start-option" data-objective="culture">
+        <span>Culture</span>
+        <small>Gagner avec les merveilles du monde</small>
+      </button>
+      <button class="start-option" data-objective="time">
+        <span>Temps</span>
+        <small>Gagner aux points a la fin du temps</small>
+      </button>
+    </div>
+    <button class="start-launch" id="startBtn">DEMARRER</button>
+  </div>
+</div>
+
 <header>
-  <h1>SIMULATION DE CIVILISATION</h1>
+  <h1>TAMAGOTCHI HIVE</h1>
   <div class="conn">
     <div class="dot" id="dot"></div>
-    <span id="connLbl">connexion…</span>
+    <span id="connLbl">connexion...</span>
   </div>
 </header>
 
@@ -26,21 +56,21 @@
       <div id="tooltip"></div>
     </div>
 
-    <!-- Légende terrain -->
+    <!-- Legende terrain -->
     <div class="panel legend-panel">
-      <div class="panel-title">Légende — Terrain</div>
+      <div class="panel-title">Legende - Terrain</div>
       <div class="legend" id="legend"></div>
     </div>
   </div>
 
-  <!-- Barre latérale -->
+  <!-- Barre laterale -->
   <div class="sidebar">
 
     <!-- Tour -->
     <div class="panel tour-panel">
       <div class="turn-label">TOUR</div>
-      <div class="turn-num" id="turnNum">—</div>
-      <div class="turn-label" id="eraLabel">—</div>
+      <div class="turn-num" id="turnNum">-</div>
+      <div class="turn-label" id="eraLabel">-</div>
     </div>
 
     <div class="panel">
@@ -65,34 +95,34 @@
       <div id="wonderList"></div>
     </div>
 
-    <!-- Journal d'événements -->
+    <!-- Journal d'evenements -->
     <div class="panel">
-      <div class="panel-title">Journal des Événements</div>
+      <div class="panel-title">Journal des Evenements</div>
       <div class="events" id="eventLog"></div>
     </div>
 
     <!-- Boutons -->
-    <button class="btn-action" id="techTreeBtn">🔬 ARBRE TECHNOLOGIQUE</button>
-    <button class="btn-action" id="restartBtn">🌍 NOUVEAU MONDE</button>
+    <button class="btn-action" id="techTreeBtn">ARBRE TECHNOLOGIQUE</button>
+    <button class="btn-action" id="restartBtn">NOUVEAU MONDE</button>
 
   </div>
 </div>
 
-<!-- ── Modal arbre technologique ── -->
+<!-- Modal arbre technologique -->
 <div id="techModal" class="modal-overlay">
   <div class="modal-card">
     <div class="modal-header">
       <span class="modal-title">ARBRE TECHNOLOGIQUE</span>
-      <button class="modal-close" id="closeTechBtn">✕ Fermer</button>
+      <button class="modal-close" id="closeTechBtn">Fermer</button>
     </div>
     <div class="tech-era-labels" id="eraLabels"></div>
     <div class="tech-canvas-wrap">
       <canvas id="techCanvas"></canvas>
     </div>
     <div class="tech-legend">
-      <span class="tech-leg-item"><span class="tech-leg-known"></span> Découverte</span>
-      <span class="tech-leg-item"><span class="tech-leg-unknown"></span> Non découverte</span>
-      <span class="tech-leg-item">● Points colorés = civilisations qui possèdent la tech</span>
+      <span class="tech-leg-item"><span class="tech-leg-known"></span> Decouverte</span>
+      <span class="tech-leg-item"><span class="tech-leg-unknown"></span> Non decouverte</span>
+      <span class="tech-leg-item">Points colores = civilisations qui possedent la tech</span>
     </div>
   </div>
 </div>

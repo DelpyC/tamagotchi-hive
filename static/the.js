@@ -21,15 +21,15 @@ const T_HIGH = {
   hills:     '#8a7a54', mountain:  '#72728a', tundra: '#90b0c4',
 };
 const T_FR = {
-  ocean:'Océan', coast:'Côte', grassland:'Prairie', plains:'Plaines',
-  desert:'Désert', forest:'Forêt', hills:'Collines', mountain:'Montagne', tundra:'Toundra',
+  ocean:'Ocean', coast:'Cote', grassland:'Prairie', plains:'Plaines',
+  desert:'Desert', forest:'Foret', hills:'Collines', mountain:'Montagne', tundra:'Toundra',
 };
 const RES_ICON = {
   wheat:'🌾',cattle:'🐄',fish:'🐟',iron:'⚙',horses:'🐴',
   coal:'◼',gold:'★',silk:'◆',marble:'⬡',
 };
 const RES_FR = {
-  wheat:'Blé',cattle:'Bétail',fish:'Poisson',iron:'Fer',
+  wheat:'Ble',cattle:'Betail',fish:'Poisson',iron:'Fer',
   horses:'Chevaux',coal:'Charbon',gold:'Or',silk:'Soie',marble:'Marbre',
 };
 const WONDER_ICON = {
@@ -49,7 +49,7 @@ for (const [id, src] of Object.entries(WONDER_IMAGE_SRC)) {
   im.src = src;
   wonderImages[id] = im;
 }
-const ERA_NAMES  = ['Antiquité','Classique','Médiéval','Renaissance'];
+const ERA_NAMES  = ['Antiquite','Classique','Medieval','Renaissance'];
 const ERA_COLORS = ['#BA7517','#1D9E75','#378ADD','#7F77DD'];
 const ERA_BADGE_BG = ['#BA751722','#1D9E7522','#378ADD22','#7F77DD22'];
 const BUILDING_COSTS = {
@@ -58,18 +58,18 @@ const BUILDING_COSTS = {
   workshop:75,university:120,bank:110,
 };
 const BUILDING_FR = {
-  granary:'Grenier',monument:'Monument',library:'Bibliothèque',
-  temple:'Temple',barracks:'Caserne',walls:'Murailles',market:'Marché',
+  granary:'Grenier',monument:'Monument',library:'Bibliotheque',
+  temple:'Temple',barracks:'Caserne',walls:'Murailles',market:'Marche',
   harbor:'Port',forge:'Forge',aqueduct:'Aqueduc',settler:'Colon',
   workshop:'Atelier',
-  university:'Université',bank:'Banque',
+  university:'Universite',bank:'Banque',
 };
 const UNIT_ICON = { melee:'⚔', ranged:'🏹', cavalry:'🐎', settler:'👣' };
 function uTypeFr(t){
   if (t==='settler') return 'Colon';
   if (t==='ranged') return 'Distance';
   if (t==='cavalry') return 'Cavalerie';
-  return 'Mêlée';
+  return 'Melee';
 }
 
 // ── Canvas setup ───────────────────────────────────────────────────
@@ -109,12 +109,49 @@ let lastStateTs = 0;
 // ── WebSocket ──────────────────────────────────────────────────────
 const dot = document.getElementById('dot');
 const connLbl = document.getElementById('connLbl');
+const startScreen = document.getElementById('startScreen');
+const startBtn = document.getElementById('startBtn');
+const startOptions = [...document.querySelectorAll('.start-option')];
+let selectedObjective = 'normal';
 let ws;
+
+function showStartScreen() {
+  startScreen.classList.remove('hidden');
+}
+
+function hideStartScreen() {
+  startScreen.classList.add('hidden');
+}
+
+function selectObjective(objective) {
+  selectedObjective = objective || 'normal';
+  for (const item of startOptions) item.classList.toggle('selected', item.dataset.objective === selectedObjective);
+}
+
+function objectiveLabel(objective) {
+  if (objective === 'domination') return 'Domination';
+  if (objective === 'science') return 'Science';
+  if (objective === 'culture') return 'Culture';
+  if (objective === 'time') return 'Temps';
+  return 'Normal';
+}
+
+for (const option of startOptions) {
+  option.addEventListener('click', () => {
+    selectObjective(option.dataset.objective || 'normal');
+  });
+}
+
+startBtn.addEventListener('click', () => {
+  if (ws && ws.readyState === 1) {
+    ws.send(`start:${selectedObjective}`);
+  }
+});
 
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onopen  = () => { dot.className='dot on'; connLbl.textContent='connecté'; };
-  ws.onclose = () => { dot.className='dot'; connLbl.textContent='reconnexion…'; setTimeout(connect,2000); };
+  ws.onopen  = () => { dot.className='dot on'; connLbl.textContent='connecte'; };
+  ws.onclose = () => { dot.className='dot'; connLbl.textContent='reconnexion...'; setTimeout(connect,2000); };
   ws.onerror = () => ws.close();
   ws.onmessage = evt => {
     cur = JSON.parse(evt.data);
@@ -131,10 +168,16 @@ function connect() {
     render(cur);
     updateSidebar(cur);
     updateWonders(cur);
+    if (cur.phase === 'setup') showStartScreen();
+    if (cur.phase === 'running' || cur.phase === 'ended') hideStartScreen();
     if (document.getElementById('techModal').classList.contains('open')) drawTechTree(cur);
   };
 }
-document.getElementById('restartBtn').onclick = () => { if(ws&&ws.readyState===1) ws.send('restart'); };
+document.getElementById('restartBtn').onclick = () => {
+  selectObjective('normal');
+  showStartScreen();
+  if (ws && ws.readyState === 1) ws.send('menu');
+};
 document.getElementById('techTreeBtn').onclick = () => { document.getElementById('techModal').classList.add('open'); if(cur) drawTechTree(cur); };
 document.getElementById('closeTechBtn').onclick = () => { document.getElementById('techModal').classList.remove('open'); };
 document.getElementById('techModal').addEventListener('click', e => {
@@ -187,7 +230,7 @@ function paintTile(x, y, tile) {
     }
 
     case 'grassland': {
-      // Grass tufts — small V strokes
+      // Grass tufts - small V strokes
       ctx.strokeStyle = hi + '80';
       ctx.lineWidth = 0.9;
       const pts = [[.15,.7],[.4,.45],[.65,.7],[.85,.55],[.3,.8],[.75,.3]];
@@ -317,7 +360,7 @@ function paintTile(x, y, tile) {
     }
   }
 
-  // 3. Isometric edge shading — makes the map feel slightly 3D
+  // 3. Isometric edge shading - makes the map feel slightly 3D
   // Right and bottom edges are darker (shadow), top and left lighter
   const edgeW = Math.max(2, T * 0.08);
   // Top-left highlight
@@ -333,7 +376,7 @@ function paintTile(x, y, tile) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  CITY PAINTER  — Civ6-inspired district silhouette
+//  CITY PAINTER - Civ6-inspired district silhouette
 // ═══════════════════════════════════════════════════════════════════
 
 function paintCity(city, civColor) {
@@ -428,14 +471,14 @@ function paintCity(city, civColor) {
     }
   }
 
-  // ── District icons — small symbols beside the keep ──
+  // District icons - small symbols beside the keep
   // Each district appears as a tiny colored square with icon
   const districts = [];
   if (hasLibrary)  districts.push(['📚','#378ADD']);
   if (hasTemple)   districts.push(['⛪','#BA7517']);
   if (hasMarket)   districts.push(['💰','#1D9E75']);
   if (hasForge)    districts.push(['⚒','#E24B4A']);
-  if (hasHarbor)   districts.push(['⚓','#2255a0']);
+  if (hasHarbor)   districts.push(['H','#2255a0']);
 
   if (districts.length > 0) {
     const ds = T * 0.22;
@@ -672,14 +715,14 @@ function render(s) {
       const tile = s.tiles[y][x];
       const px=x*T, py=y*T;
       if (!tile.explored) {
-        // Completely dark — not yet discovered
+        // Completely dark - not yet discovered
         ctx.fillStyle = '#00000099';
         ctx.fillRect(px, py, T, T);
         // Slight noise texture to avoid flat black
         ctx.fillStyle = `rgba(0,0,0,${0.82 + tn(x,y,0)*0.12})`;
         ctx.fillRect(px, py, T, T);
       } else if (!tile.visible) {
-        // Explored but out of sight — desaturated dark overlay
+        // Explored but out of sight - desaturated dark overlay
         ctx.fillStyle = '#000000' + '60';
         ctx.fillRect(px, py, T, T);
         // Bluish tint to feel "cold/past"
@@ -718,7 +761,7 @@ function updateSidebar(s) {
   const maxEra = Math.max(...s.civs.map(c => c.era||0));
   const eraLabel = document.getElementById('eraLabel');
   if (s.phase === 'ended') {
-    eraLabel.textContent = `FIN — ${s.victory||''}`;
+    eraLabel.textContent = `FIN - ${s.victory||''}`;
     eraLabel.style.color = '#f0c060';
   } else {
     eraLabel.textContent = ERA_NAMES[maxEra]||'';
@@ -740,7 +783,7 @@ function updateSidebar(s) {
       const td=s.techTree.find(t=>t.id===civ.currentResearch);
       if (td) {
         const pct=Math.min(100,Math.max(0,civ.researchProg||0));
-        resHTML=`<div class="civ-research">🔬 ${td.name} (${pct}%)</div>
+        resHTML=`<div class="civ-research">Recherche: ${td.name} (${pct}%)</div>
           <div class="research-bar-wrap"><div class="research-bar-fill" style="width:${pct}%"></div></div>`;
       }
     }
@@ -756,7 +799,7 @@ function updateSidebar(s) {
           <span class="civ-name">${civ.name}</span>
           <span class="civ-era-badge" style="background:${eraBg};color:${eraCol};border:1px solid ${eraCol}44">${eraName}</span>
         </div>
-        <div class="civ-stats">🏛 ${civ.cities.length} · 👥 ${pop} · 💰 ${civ.gold} · 🔬 ${civ.science}</div>
+        <div class="civ-stats">Villes ${civ.cities.length} | Pop ${pop} | Or ${civ.gold} | Science ${civ.science}</div>
         ${resHTML}
       </div>`;
     civList.appendChild(row);
@@ -789,13 +832,22 @@ function updateSidebar(s) {
     const topScience = Math.max(...s.civs.map(c => (c.knownTechs||[]).length));
     const topCulture = Math.max(...s.civs.map(c => wonderByCiv[c.id]||0));
     const aliveCount = s.civs.filter(c=>c.alive).length;
+    const cityCounts = {};
+    for (const c of s.civs) cityCounts[c.id] = 0;
+    for (const city of s.cities) cityCounts[city.civId] = (cityCounts[city.civId]||0)+1;
+    const topCities = Math.max(0, ...Object.values(cityCounts));
 
     const pScience = Math.min(100, Math.round((topScience/scienceTarget)*100));
     const pCulture = Math.min(100, Math.round((topCulture/cultureTarget)*100));
-    const pDom = Math.min(100, Math.round(((s.civs.length-aliveCount)/(s.civs.length-1))*100));
+    const eliminationDom = (s.civs.length-aliveCount)/(s.civs.length-1);
+    const cityDom = s.cities.length ? topCities/s.cities.length : 0;
+    const pDom = s.phase === 'ended' && s.victory === 'Domination'
+      ? 100
+      : Math.min(100, Math.round(Math.max(eliminationDom, cityDom)*100));
     const pTime = Math.min(100, Math.round((s.turn/280)*100));
 
     victoryBoard.innerHTML = `
+      <div class="objective-line">Objectif : ${objectiveLabel(s.objective)}</div>
       <div class="v-row"><span>Domination</span><div class="v-bar"><div style="width:${pDom}%"></div></div><b>${pDom}%</b></div>
       <div class="v-row"><span>Science</span><div class="v-bar"><div style="width:${pScience}%"></div></div><b>${topScience}/${scienceTarget}</b></div>
       <div class="v-row"><span>Culture</span><div class="v-bar"><div style="width:${pCulture}%"></div></div><b>${topCulture}/${cultureTarget}</b></div>
@@ -840,7 +892,7 @@ function updateWonders(s) {
       row.innerHTML=`<div class="wonder-icon">${iconHTML}</div>
         <div style="flex:1;min-width:0;">
           <div class="wonder-name">${w.name}</div>
-          <div class="wonder-owner" style="color:${col}">${name} — Tour ${w.turn}</div>
+          <div class="wonder-owner" style="color:${col}">${name} - Tour ${w.turn}</div>
         </div>`;
     } else {
       row.innerHTML=`<div class="wonder-icon" style="opacity:.4">${iconHTML}</div>
@@ -866,7 +918,7 @@ canvas.addEventListener('mousemove', e => {
   const unit=curUnitByPos[`${tx},${ty}`]||null;
 
   if(!tile.explored){
-    tooltip.innerHTML='<div class="tt-title">Territoire Inexploré</div>';
+    tooltip.innerHTML='<div class="tt-title">Territoire Inexplore</div>';
     tooltip.style.display='block';
   } else {
     let html=`<div class="tt-title">${T_FR[tile.terrain]||tile.terrain}</div>`;
@@ -877,8 +929,8 @@ canvas.addEventListener('mousemove', e => {
       html+=`<hr class="tt-divider">`;
       html+=`<div class="tt-title" style="color:${civ?.color||'#fff'}">${city.name}</div>`;
       html+=`<div>Population : ${city.population}</div>`;
-      html+=`<div class="tt-muted">Défense : ${city.defense||0}/${city.maxDefense||0}</div>`;
-      html+=`<div class="tt-yield"><div>🌾<span>${city.yieldFood}/t</span></div><div>⚒<span>${city.yieldProd}/t</span></div><div>💰<span>${city.yieldGold}/t</span></div><div>🔬<span>${city.yieldScience||0}/t</span></div></div>`;
+      html+=`<div class="tt-muted">Defense : ${city.defense||0}/${city.maxDefense||0}</div>`;
+      html+=`<div class="tt-yield"><div>Nour.<span>${city.yieldFood}/t</span></div><div>Prod.<span>${city.yieldProd}/t</span></div><div>Or<span>${city.yieldGold}/t</span></div><div>Sci.<span>${city.yieldScience||0}/t</span></div></div>`;
       html+=`<div class="tt-muted">Nourriture : ${city.foodBin}/${city.foodNeeded}</div>`;
       if(city.currentBuild){
         const bn=city.currentBuild.startsWith('wonder:')
@@ -887,17 +939,17 @@ canvas.addEventListener('mousemove', e => {
         const bc=city.currentBuild.startsWith('wonder:')?'?':(BUILDING_COSTS[city.currentBuild]||'?');
         html+=`<div class="tt-muted">Construction : ${bn} (${city.buildProgress}/${bc})</div>`;
       }
-      if(city.buildings?.length) html+=`<div class="tt-muted">Bâtiments : ${city.buildings.map(b=>BUILDING_FR[b]||b).join(', ')}</div>`;
+      if(city.buildings?.length) html+=`<div class="tt-muted">Batiments : ${city.buildings.map(b=>BUILDING_FR[b]||b).join(', ')}</div>`;
       if(civ?.currentResearch&&cur.techTree){
         const td=cur.techTree.find(t=>t.id===civ.currentResearch);
-        if(td){const pct=Math.min(100,Math.max(0,civ.researchProg||0));html+=`<div class="tt-muted">🔬 Recherche : ${td.name} (${pct}%)</div>`;}
+        if(td){const pct=Math.min(100,Math.max(0,civ.researchProg||0));html+=`<div class="tt-muted">Recherche : ${td.name} (${pct}%)</div>`;}
       }
-      if(city.isCoastal) html+=`<div class="tt-muted">⚓ Ville côtière</div>`;
+      if(city.isCoastal) html+=`<div class="tt-muted">Ville cotiere</div>`;
     }
     if(unit){
       const civ=cur.civs[unit.civId];
       html+=`<hr class="tt-divider">`;
-      html+=`<div class="tt-title" style="font-size:11px;color:${civ?.color||'#fff'}">Unité militaire</div>`;
+      html+=`<div class="tt-title" style="font-size:11px;color:${civ?.color||'#fff'}">Unite militaire</div>`;
       html+=`<div class="tt-muted">${civ?.name||'?'}</div>`;
       html+=`<div class="tt-muted">Type : ${uTypeFr(unit.type||'melee')}</div>`;
       html+=`<div class="tt-muted">Force : ${unit.strength||1}</div>`;
@@ -968,7 +1020,7 @@ function drawTechTree(s){
     c.font=`${isKnown?'bold ':''}9px 'Share Tech Mono',monospace`;
     c.textAlign='center'; c.textBaseline='middle';
     let label=t.name;
-    if(c.measureText(label).width>NODE_W-8) label=label.slice(0,14)+'…';
+    if(c.measureText(label).width>NODE_W-8) label=label.slice(0,14)+'...';
     c.fillText(label,p.x,p.y-(knowers.length?4:0));
     if(knowers.length){
       let dotX=p.x-(knowers.length*9)/2+4;
