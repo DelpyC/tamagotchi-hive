@@ -79,20 +79,7 @@ Une interface web permet de visualiser en temps réel l'évolution de la simulat
 
 ## Architecture du projet
 
-Le projet est organisé selon une architecture séparant les différents composants du système :
-
-```text
-tamagotchi-hive/
-│
-├── cmd/
-├── internal/
-├── web/
-├── assets/
-├── data/
-└── README.md
-```
-
-Cette organisation permet de distinguer la logique métier, les données et l'interface utilisateur.
+Ce projet à été réalisé dans un cadre pédagogique où je n'avais pas les connaissances pour prévoir la taille qu'aller prendre ce projet. Cela à mené à ma plus grande difficulté: une mauvaise organisation du code. En effet, le projet a fini avec 1 fichier golang et 1 fichier JavaScript qui auraient dût être séparé par fonctionnalités pour simplifier l'amélioration de ces fonctionnalités mais dans l'état actuelle cela à prouver difficile. Mais en terme d'apprentissage, cela à été une bonne leçon pour moi que je n'est pas répéter depuis.
 
 ---
 

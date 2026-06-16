@@ -1030,6 +1030,16 @@ function drawTechTree(s){
   }
 }
 
+const pauseBtn = document.getElementById('pauseBtn');
+let isPaused = false;
+
+pauseBtn.addEventListener('click', () => {
+    if (!ws || ws.readyState !== 1) return;
+    isPaused = !isPaused;
+    ws.send(isPaused ? 'pause' : 'resume');
+    pauseBtn.textContent = isPaused ? '▶ REPRENDRE' : '⏸ PAUSE';
+});
+
 // ── Boot ───────────────────────────────────────────────────────────
 resize();
 connect();

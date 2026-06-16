@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"encoding/json"
@@ -337,6 +337,8 @@ var (
 	nextID    int
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
 	upgrader  = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+	paused    bool
+	pauseMu   sync.Mutex
 )
 
 func newID() int { nextID++; return nextID }
@@ -1687,6 +1689,12 @@ func gameLoop() {
 	ticker := time.NewTicker(turnInterval)
 	defer ticker.Stop()
 	for range ticker.C {
+		pauseMu.Lock()
+		isPaused := paused
+		pauseMu.Unlock()
+		if isPaused {
+			continue
+		}
 		processTurn()
 		broadcast()
 	}
@@ -1728,6 +1736,14 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			initGame("normal", false)
 			stateMu.Unlock()
 			broadcast()
+		} else if text == "pause" {
+			pauseMu.Lock()
+			paused = true
+			pauseMu.Unlock()
+		} else if text == "resume" {
+			pauseMu.Lock()
+			paused = false
+			pauseMu.Unlock()
 		}
 	}
 }
